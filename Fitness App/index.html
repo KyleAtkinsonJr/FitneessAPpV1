@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fitness Tracker</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts - Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom animations for the app */
+        @keyframes bounce-slow {
+          0%, 100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-5px);
+          }
+        }
+        .animate-bounce-slow {
+          animation: bounce-slow 2s infinite ease-in-out;
+        }
+        @keyframes fade-in-up {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fade-in-up {
+          animation: fade-in-up 0.5s ease-out forwards;
+        }
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.7;
+          }
+        }
+        .animate-pulse {
+          animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+
+  <link rel="manifest" href="manifest.json">
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js')
+          .then(reg => console.log('Service worker registered.', reg))
+          .catch(err => console.error('Service worker registration failed.', err));
+      });
+    }
+  </script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-700 to-teal-500 text-gray-900 font-inter p-4 sm:p-6 md:p-8">
+    <div id="root"></div>
+
+    <!-- React and ReactDOM CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX transformation in browser (for development/simple cases) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, collection, query, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables for Firebase config and auth token
+        window.__app_id = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        window.__firebase_config = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
+        window.__initial_auth_token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Initialize Firebase and make it available globally
+        let app;
+        let db;
+        let auth;
+
+        try {
+          app = initializeApp(JSON.parse(window.__firebase_config));
+          db = getFirestore(app);
+          auth = getAuth(app);
+          window.firebaseApp = app; // Make app instance globally available
+          window.firebaseDb = db;   // Make db instance globally available
+          window.firebaseAuth = auth; // Make auth instance globally available
+        } catch (error) {
+          console.error("Firebase initialization failed:", error);
+          // Fallback for development if Firebase config is not provided
+          if (process.env.NODE_ENV === 'development' || !window.__firebase_config || window.__firebase_config === '{}') {
+            console.warn("Using dummy Firebase instances for development. Real persistence will not work.");
+            window.firebaseApp = {};
+            window.firebaseDb = {};
+            window.firebaseAuth = {};
+          } else {
+            console.error("Firebase is not configured. Please ensure __firebase_config is provided.");
+          }
+        }
+
+        // Expose Firebase functions globally for the Babel script
+        window.getAuth = getAuth;
+        window.signInAnonymously = signInAnonymously;
+        window.signInWithCustomToken = signInWithCustomToken;
+        window.onAuthStateChanged = onAuthStateChanged;
+        window.getFirestore = getFirestore;
+        window.doc = doc;
+        window.setDoc = setDoc;
+        window.collection = collection;
+        window.query = query;
+        window.onSnapshot = onSnapshot;
+    </script>
+
+    <script type="text/babel">
+        const { useState, useEffect, useCallback, useRef } = React;
+        const { createRoot } = ReactDOM;
+
+        // Global variables from window object
+        const appId = window.__app_id;
+        const firebaseConfig = JSON.parse(window.__firebase_config);
+        const initialAuthToken = window.__initial_auth_token;
+
+        // Firebase instances from window object
+        const app = window.firebaseApp;
+        const db = window.firebaseDb;
+        const auth = window.firebaseAuth;
+
+        const MOTIVATION_QUOTES = [
+          "The only bad workout is the one that didn't happen.",
+          "Success isn't always about greatness. It's about consistency. Consistent hard work gains success. Greatness will come.",
+          "Believe you can and you're halfway there.",
+          "Your body can stand almost anything. It's your mind that you have to convince.",
+          "The pain you feel today will be the strength you feel tomorrow.",
+          "Don't wish for it, work for it.",
+          "Strength does not come from physical capacity. It comes from an indomitable will.",
+          "Today's actions are tomorrow's results.",
+          "Push yourself because no one else is going to do it for you.",
+          "The only way to define your limits is by going beyond them.",
+        ];
+
+        // Updated WORKOUT_PLAN with dayKey and workoutType for easier lookup and video URLs
+        const WORKOUT_PLAN = [
+          {
+            category: "Strength Training (3–4 days/week)",
+            type: "strength",
+            focus: "Building lean muscle, boosting metabolism, and toning.",
+            days: [
+              {
+                name: "Day 1 – Lower Body (Glutes, Hamstrings, Quads)",
+                dayKey: "strength-lower-body",
+                exercises: [
+                  { id: "strength-lower-squats", name: "Barbell or goblet squats", sets: [{ reps: "8-12" }, { reps: "8-12" }, { reps: "8-12" }], videoUrl: "https://www.youtube.com/watch?v=62bDZajYJm0" },
+                  { id: "strength-lower-rdl", name: "Romanian deadlifts", sets: [{ reps: "10" }, { reps: "10" }, { reps: "10" }], videoUrl: "https://www.youtube.com/watch?v=IWygEz3U4UE" },
+                  { id: "strength-lower-stepups-lunges", name: "Step-ups or walking lunges", sets: [{ reps: "12" }, { reps: "12" }, { reps: "12" }], videoUrl: "https://www.youtube.com/watch?v=T7h-cdaAE74" },
+                  { id: "strength-lower-hip-thrusts", name: "Hip thrusts", sets: [{ reps: "15" }, { reps: "15" }, { reps: "15" }], videoUrl: "https://www.youtube.com/watch?v=3ENrRyaAFEQ" },
+                  { id: "strength-lower-calf-raises", name: "Calf raises", sets: [{ reps: "20" }, { reps: "20" }, { reps: "20" }], videoUrl: "https://www.youtube.com/watch?v=rbvyXV1uHhY" },
+                ],
+              },
+              {
+                name: "Day 2 – Upper Body Push (Chest, Shoulders, Triceps)",
+                dayKey: "strength-upper-push",
+                exercises: [
+                  { id: "strength-upper-push-bench-press", name: "Dumbbell bench press", sets: [{ reps: "10" }, { reps: "10" }, { reps: "10" }], videoUrl: "https://www.youtube.com/watch?v=jJDFJKyvw1E" },
+                  { id: "strength-upper-push-shoulder-press", name: "Shoulder press", sets: [{ reps: "10" }, { reps: "10" }, { reps: "10" }], videoUrl: "https://www.youtube.com/watch?v=seUCEgPsBtc" },
+                  { id: "strength-upper-push-lateral-raises", name: "Lateral raises", sets: [{ reps: "15" }, { reps: "15" }, { reps: "15" }], videoUrl: "https://www.youtube.com/watch?v=4p_m96HXMLk" },
+                  { id: "strength-upper-push-tricep-pushdowns", name: "Tricep pushdowns", sets: [{ reps: "12" }, { reps: "12" }, { reps: "12" }], videoUrl: "https://www.youtube.com/watch?v=R8zsVZoldvY" },
+                ],
+              },
+              {
+                name: "Day 3 – Upper Body Pull (Back, Biceps)",
+                dayKey: "strength-upper-pull",
+                exercises: [
+                  { id: "strength-upper-pull-lat-pulldowns", name: "Lat pulldowns or assisted pull-ups", sets: [{ reps: "10" }, { reps: "10" }, { reps: "10" }], videoUrl: "https://www.youtube.com/watch?v=z7ei5hd5as8" },
+                  { id: "strength-upper-pull-cable-rows", name: "Seated cable rows", sets: [{ reps: "10" }, { reps: "10" }, { reps: "10" }], videoUrl: "https://www.youtube.com/watch?v=kISTb3lZ21A" },
+                  { id: "strength-upper-pull-bicep-curls", name: "Dumbbell bicep curls", sets: [{ reps: "12" }, { reps: "12" }, { reps: "12" }], videoUrl: "https://www.youtube.com/watch?v=XGFqO6HMnGQ" },
+                  { id: "strength-upper-pull-face-pulls", name: "Face pulls", sets: [{ reps: "15" }, { reps: "15" }, { reps: "15" }], videoUrl: "https://www.youtube.com/watch?v=cuTBqxntdso" },
+                ],
+              },
+              {
+                name: "Day 4 – Optional Full Body",
+                dayKey: "strength-full-body",
+                exercises: [
+                  { id: "strength-full-deadlifts", name: "Deadlifts", sets: [{ reps: "8" }, { reps: "8" }, { reps: "8" }], videoUrl: "https://www.youtube.com/watch?v=ntr64W6ZWB0" },
+                  { id: "strength-full-kettlebell-swings", name: "Kettlebell swings", sets: [{ reps: "12" }, { reps: "12" }, { reps: "12" }], videoUrl: "https://www.youtube.com/watch?v=1aPWXHqP_RU" },
+                  { id: "strength-full-pushups", name: "Push-ups", sets: [{ reps: "12" }, { reps: "12" }, { reps: "12" }], videoUrl: "https://www.youtube.com/watch?v=nYaKp54oBZ0" },
+                  { id: "strength-full-plank-rows", name: "Plank rows or renegade rows", sets: [{ reps: "10" }, { reps: "10" }, { reps: "10" }], videoUrl: "https://www.youtube.com/watch?v=F68p7cJFtOI" },
+                ],
+              },
+            ],
+          },
+          {
+            category: "Cardio Plan (Structured Around Work Schedule)",
+            type: "cardio",
+            days: [
+              {
+                name: "On Days Off from Work",
+                dayKey: "cardio-days-off",
+                exercises: [
+                  { id: "cardio-off-step-machine", name: "30 mins on the Step Machine", sets: [{ reps: "30 mins" }], videoUrl: "https://www.youtube.com/watch?v=CCgEzLrf45Y" },
+                ],
+              },
+              {
+                name: "On Late Start Work Days (3x/week)",
+                dayKey: "cardio-late-start",
+                exercises: [
+                  { id: "cardio-late-bike-elliptical", name: "60 mins on the Bike or Elliptical", sets: [{ reps: "60 mins" }], videoUrl: "https://www.youtube.com/watch?v=9mhcHHUxMuQ" },
+                  { id: "cardio-late-spin-step", name: "45 mins Spin + 15 mins Step Machine", sets: [{ reps: "45/15 mins" }], videoUrl: "https://www.youtube.com/watch?v=S3Qv6d91_G0" }, // General spin class
+                ],
+              },
+            ],
+          },
+          {
+            category: "Sample Weekly Schedule",
+            isSchedule: true,
+            schedule: [
+              { day: "Monday", workout: "Strength (Lower Body) + 30-min steps (off work)", workoutKeys: ["strength-lower-body", "cardio-days-off"] },
+              { day: "Tuesday", workout: "60-min bike or spin + steps (late start)", workoutKeys: ["cardio-late-start"] },
+              { day: "Wednesday", workout: "Strength (Upper Push)", workoutKeys: ["strength-upper-push"] },
+              { day: "Thursday", workout: "60-min elliptical or spin + steps (late start)", workoutKeys: ["cardio-late-start"] },
+              { day: "Friday", workout: "Strength (Upper Pull) + 30-min steps (off work)", workoutKeys: ["strength-upper-pull", "cardio-days-off"] },
+              { day: "Saturday", workout: "Optional full body + 30-min steps (off work)", workoutKeys: ["strength-full-body", "cardio-days-off"] },
+              { day: "Sunday", workout: "60-min cardio or rest (if needed)", workoutKeys: ["cardio-late-start"] }, // Assuming 60-min cardio maps to late-start cardio
+            ],
+          },
+        ];
+
+        // Helper to get today's date in YYYY-MM-DD format
+        const getTodayDateString = (date = new Date()) => {
+          return date.toISOString().split('T')[0];
+        };
+
+        // Helper to get day name from date
+        const getDayName = (date) => {
+          const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          return days[date.getDay()];
+        };
+
+        // Helper to get current week ID in YYYY-WW format (ISO week date)
+        const getISOWeekDate = (date) => {
+          const d = new Date(date.valueOf());
+          const dayNum = d.getDay();
+          d.setDate(d.getDate() + 3 - (dayNum === 0 ? 7 : dayNum)); // Set to Thursday of the current week (ISO week starts Monday)
+          const week1 = new Date(d.getFullYear(), 0, 4); // Jan 4th is always in week 1
+          return d.getFullYear() + '-W' + String(1 + Math.ceil(((d.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7)).padStart(2, '0');
+        };
+
+        // Main App Component
+        const App = () => {
+          const [userId, setUserId] = useState(null);
+          const [isAuthReady, setIsAuthReady] = useState(false);
+          const [workoutStatus, setWorkoutStatus] = useState({}); // { "exercise-id": { "set-index-0": true, ... }, ... }
+          const [dailyQuote, setDailyQuote] = useState('');
+          const [userMessage, setUserMessage] = useState('');
+
+          // Date/Week/Day Navigation States
+          const [selectedDate, setSelectedDate] = useState(new Date()); // Represents the date for the currently viewed day/week
+          const selectedWeekId = getISOWeekDate(selectedDate);
+          const selectedDayName = getDayName(selectedDate);
+          const selectedDayIndex = selectedDate.getDay(); // 0 for Sunday, 1 for Monday
+
+          // Timer state
+          const REST_TIMER_DURATION = 60; // 1 minute in seconds
+          const [timer, setTimer] = useState(REST_TIMER_DURATION);
+          const [isTimerActive, setIsTimerActive] = useState(false);
+          const [showTimer, setShowTimer] = useState(false);
+          const timerIntervalRef = useRef(null);
+
+          // Authentication and Firebase setup
+          useEffect(() => {
+            const setupFirebase = async () => {
+              if (!auth || !db) {
+                console.error("Firebase not initialized correctly.");
+                return;
+              }
+
+              if (initialAuthToken) {
+                try {
+                  await window.signInWithCustomToken(auth, initialAuthToken);
+                  console.log("Signed in with custom token.");
+                } catch (error) {
+                  console.error("Error signing in with custom token:", error);
+                  try {
+                    await window.signInAnonymously(auth);
+                    console.log("Signed in anonymously as fallback.");
+                  } catch (anonError) {
+                    console.error("Error signing in anonymously:", anonError);
+                  }
+                }
+              } else {
+                try {
+                  await window.signInAnonymously(auth);
+                  console.log("Signed in anonymously.");
+                } catch (error) {
+                  console.error("Error signing in anonymously:", error);
+                }
+              }
+
+              const unsubscribe = window.onAuthStateChanged(auth, (user) => {
+                if (user) {
+                  setUserId(user.uid);
+                  setIsAuthReady(true);
+                } else {
+                  setUserId(null);
+                  setIsAuthReady(true);
+                }
+              });
+
+              return () => unsubscribe();
+            };
+
+            setupFirebase();
+          }, []);
+
+          // Fetch and listen to workout status from Firestore for the selected week
+          useEffect(() => {
+            if (!isAuthReady || !userId || !db || !selectedWeekId) {
+              return;
+            }
+
+            const workoutsCollectionRef = window.collection(db, `artifacts/${appId}/users/${userId}/workoutsByWeek/${selectedWeekId}/exercises`);
+            const q = window.query(workoutsCollectionRef);
+
+            const unsubscribe = window.onSnapshot(q, (snapshot) => {
+              const currentWorkoutStatus = {};
+              snapshot.forEach((doc) => {
+                const data = doc.data();
+                currentWorkoutStatus[doc.id] = data.setsCompleted || {};
+              });
+              setWorkoutStatus(currentWorkoutStatus);
+              console.log("Workout status updated from Firestore for week:", selectedWeekId);
+            }, (error) => {
+              console.error("Error fetching workout status:", error);
+              setUserMessage("Error loading workout progress. Please try again.");
+            });
+
+            return () => unsubscribe();
+          }, [isAuthReady, userId, db, selectedWeekId]);
+
+          // Set daily motivational quote
+          useEffect(() => {
+            const today = getTodayDateString();
+            const lastQuoteDate = localStorage.getItem('lastQuoteDate');
+            let currentQuote = localStorage.getItem('currentQuote');
+
+            if (!lastQuoteDate || lastQuoteDate !== today || !currentQuote) {
+              const randomIndex = Math.floor(Math.random() * MOTIVATION_QUOTES.length);
+              currentQuote = MOTIVATION_QUOTES[randomIndex];
+              localStorage.setItem('lastQuoteDate', today);
+              localStorage.setItem('currentQuote', currentQuote);
+            }
+            setDailyQuote(currentQuote);
+          }, []);
+
+          // Timer logic
+          useEffect(() => {
+            if (isTimerActive && timer > 0) {
+              timerIntervalRef.current = setInterval(() => {
+                setTimer((prevTimer) => prevTimer - 1);
+              }, 1000);
+            } else if (timer === 0) {
+              clearInterval(timerIntervalRef.current);
+              setIsTimerActive(false);
+            }
+
+            return () => clearInterval(timerIntervalRef.current);
+          }, [isTimerActive, timer]);
+
+          const startTimer = () => {
+            setTimer(REST_TIMER_DURATION);
+            setIsTimerActive(true);
+            setShowTimer(true);
+          };
+
+          const resetTimer = () => {
+            clearInterval(timerIntervalRef.current);
+            setIsTimerActive(false);
+            setTimer(REST_TIMER_DURATION);
+            setShowTimer(false);
+          };
+
+          // Function to handle ticking off individual sets
+          const handleSetToggle = useCallback(async (exerciseId, setIndex, isCompleted) => {
+            if (!userId || !db || !selectedWeekId) {
+              setUserMessage("Please wait for user authentication and week data to load.");
+              return;
+            }
+
+            const currentExerciseSets = { ...(workoutStatus[exerciseId] || {}) };
+            currentExerciseSets[`set-${setIndex}`] = isCompleted;
+
+            const workoutDocRef = window.doc(db, `artifacts/${appId}/users/${userId}/workoutsByWeek/${selectedWeekId}/exercises`, exerciseId);
+            try {
+              await window.setDoc(workoutDocRef, { setsCompleted: currentExerciseSets, lastUpdated: new Date() }, { merge: true });
+              console.log(`Exercise ${exerciseId}, Set ${setIndex} status updated to ${isCompleted} for week ${selectedWeekId}.`);
+              setUserMessage('');
+
+              if (isCompleted) {
+                startTimer();
+              }
+            } catch (error) {
+              console.error("Error updating workout status:", error);
+              setUserMessage("Failed to update workout status. Please try again.");
+            }
+          }, [userId, db, selectedWeekId, workoutStatus]);
+
+          // Function to check if all sets for an exercise are completed
+          const areAllSetsCompleted = (exerciseId, totalSets) => {
+            const exerciseSetsStatus = workoutStatus[exerciseId] || {};
+            for (let i = 0; i < totalSets; i++) {
+              if (!exerciseSetsStatus[`set-${i}`]) {
+                return false;
+              }
+            }
+            return true;
+          };
+
+          // Navigation functions for weeks
+          const goToPreviousWeek = () => {
+            const newDate = new Date(selectedDate);
+            newDate.setDate(newDate.getDate() - 7);
+            setSelectedDate(newDate);
+          };
+
+          const goToNextWeek = () => {
+            const newDate = new Date(selectedDate);
+            newDate.setDate(newDate.getDate() + 7);
+            setSelectedDate(newDate);
+          };
+
+          // Navigation functions for days within the selected week
+          const goToPreviousDay = () => {
+            const newDate = new Date(selectedDate);
+            newDate.setDate(newDate.getDate() - 1);
+            setSelectedDate(newDate);
+          };
+
+          const goToNextDay = () => {
+            const newDate = new Date(selectedDate);
+            newDate.setDate(newDate.getDate() + 1);
+            setSelectedDate(newDate);
+          };
+
+          // Get scheduled workouts for the selected day
+          const getWorkoutsForSelectedDay = () => {
+            const scheduleSection = WORKOUT_PLAN.find(s => s.isSchedule);
+            if (!scheduleSection) return [];
+
+            // Map selectedDayIndex (0=Sunday, 1=Monday) to schedule's day string
+            const currentDaySchedule = scheduleSection.schedule.find(item => item.day === selectedDayName);
+
+            if (!currentDaySchedule || !currentDaySchedule.workoutKeys) return [];
+
+            const exercisesForDay = [];
+            currentDaySchedule.workoutKeys.forEach(key => {
+              WORKOUT_PLAN.forEach(section => {
+                if (!section.isSchedule) { // Not the schedule section
+                  const dayWorkout = section.days.find(d => d.dayKey === key);
+                  if (dayWorkout) {
+                    exercisesForDay.push({
+                      category: section.category,
+                      dayName: dayWorkout.name,
+                      exercises: dayWorkout.exercises
+                    });
+                  }
+                }
+              });
+            });
+            return exercisesForDay;
+          };
+
+          const workoutsForToday = getWorkoutsForSelectedDay();
+
+          return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-700 to-teal-500 text-gray-900 font-inter p-4 sm:p-6 md:p-8">
+              <div className="max-w-4xl mx-auto">
+                {/* Header */}
+                <h1 className="text-4xl sm:text-5xl font-extrabold text-center mb-6 drop-shadow-lg text-white">
+                  <span className="inline-block animate-bounce-slow">🏋️‍♀️</span> Fitness Tracker
+                </h1>
+
+                {/* Motivation Quote */}
+                <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-6 mb-8 shadow-2xl border border-white border-opacity-30">
+                  <h2 className="text-2xl font-bold mb-3 text-center text-yellow-300">Daily Motivation</h2>
+                  <p className="text-lg italic text-center leading-relaxed text-white">
+                    "{dailyQuote}"
+                  </p>
+                </div>
+
+                {/* User Message/Error Display */}
+                {userMessage && (
+                  <div className="bg-red-500 bg-opacity-70 text-white p-3 rounded-lg mb-4 text-center shadow-md">
+                    {userMessage}
+                  </div>
+                )}
+
+                {/* Rest Timer */}
+                {showTimer && (
+                  <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+                    <div className="bg-gradient-to-br from-blue-600 to-purple-700 rounded-2xl p-8 shadow-2xl text-white text-center border-4 border-blue-400 animate-fade-in-up">
+                      <h2 className="text-4xl font-bold mb-4">Rest Time!</h2>
+                      <div className="text-7xl font-extrabold mb-6 animate-pulse">
+                        {String(Math.floor(timer / 60)).padStart(2, '0')}:
+                        {String(timer % 60).padStart(2, '0')}
+                      </div>
+                      <button
+                        onClick={resetTimer}
+                        className="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
+                      >
+                        Skip Rest
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Week Navigation and Current Week Display */}
+                <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4 mb-8 shadow-2xl border border-white border-opacity-30 text-white text-center">
+                  <div className="flex items-center justify-between mb-4">
+                    <button
+                      onClick={goToPreviousWeek}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
+                    >
+                      &lt; Prev Week
+                    </button>
+                    <h2 className="text-xl sm:text-2xl font-bold text-green-300">Week: {selectedWeekId}</h2>
+                    <button
+                      onClick={goToNextWeek}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
+                    >
+                      Next Week &gt;
+                    </button>
+                  </div>
+                  <p className="text-lg">Viewing workouts for: <span className="font-bold text-yellow-300">{selectedDate.toDateString()}</span></p>
+                </div>
+
+                {/* Sample Weekly Schedule - Always at top of workout content */}
+                {WORKOUT_PLAN.find(s => s.isSchedule) && (
+                  <div className="bg-white bg-opacity-15 backdrop-blur-sm rounded-xl p-5 sm:p-6 mb-8 shadow-2xl border border-white border-opacity-30">
+                    <h2 className="text-2xl sm:text-3xl font-bold mb-4 text-yellow-200">Weekly Workout Schedule</h2>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full bg-white bg-opacity-10 rounded-lg shadow-inner">
+                        <thead>
+                          <tr className="bg-blue-700 bg-opacity-50">
+                            <th className="py-3 px-4 text-left text-sm font-semibold text-gray-100 rounded-tl-lg">Day</th>
+                            <th className="py-3 px-4 text-left text-sm font-semibold text-gray-100 rounded-tr-lg">Workout</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {WORKOUT_PLAN.find(s => s.isSchedule).schedule.map((item, idx) => (
+                            <tr key={idx} className={`${item.day === selectedDayName ? 'bg-blue-500 bg-opacity-30' : (idx % 2 === 0 ? 'bg-opacity-5' : 'bg-opacity-10')} hover:bg-opacity-20 transition-colors`}>
+                              <td className="py-3 px-4 text-base text-gray-100">{item.day}</td>
+                              <td className="py-3 px-4 text-base text-gray-100">{item.workout}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Daily Workout Navigation */}
+                <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4 mb-8 shadow-2xl border border-white border-opacity-30 text-white text-center">
+                  <div className="flex items-center justify-between mb-4">
+                    <button
+                      onClick={goToPreviousDay}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
+                    >
+                      &lt; Prev Day
+                    </button>
+                    <h2 className="text-xl sm:text-2xl font-bold text-green-300">Workouts for {selectedDayName}</h2>
+                    <button
+                      onClick={goToNextDay}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
+                    >
+                      Next Day &gt;
+                    </button>
+                  </div>
+                </div>
+
+                {/* Display Workouts for the Selected Day */}
+                {workoutsForToday.length > 0 ? (
+                  workoutsForToday.map((section, sectionIndex) => (
+                    <div key={sectionIndex} className="bg-white bg-opacity-15 backdrop-blur-sm rounded-xl p-5 sm:p-6 mb-8 shadow-2xl border border-white border-opacity-30">
+                      <h2 className="text-2xl sm:text-3xl font-bold mb-4 text-yellow-200">{section.category}</h2>
+                      <h3 className="text-xl sm:text-2xl font-semibold mb-3 text-blue-200">{section.dayName}</h3>
+                      <ul className="space-y-3">
+                        {section.exercises.map((exercise) => (
+                          <li key={exercise.id} className={`flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white bg-opacity-5 rounded-md p-3 shadow-sm hover:bg-opacity-10 transition-colors ${areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'border-l-4 border-green-500' : ''}`}>
+                            <div className="flex items-center flex-grow mb-2 sm:mb-0">
+                              <span className={`text-lg sm:text-xl font-medium ${areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'line-through text-gray-400' : 'text-white'}`}>
+                                {exercise.name}
+                              </span>
+                            </div>
+                            <div className="flex items-center flex-wrap gap-2 sm:ml-4">
+                              {exercise.sets.map((set, setIndex) => (
+                                <label key={setIndex} htmlFor={`${exercise.id}-set-${setIndex}-${selectedWeekId}`} className="flex items-center cursor-pointer bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-3 rounded-md shadow-md transition duration-200 ease-in-out">
+                                  <input
+                                    type="checkbox"
+                                    id={`${exercise.id}-set-${setIndex}-${selectedWeekId}`}
+                                    checked={!!(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`])}
+                                    onChange={(e) => handleSetToggle(exercise.id, setIndex, e.target.checked)}
+                                    className="form-checkbox h-4 w-4 text-green-400 bg-gray-700 border-gray-500 rounded focus:ring-green-400 focus:ring-offset-1 focus:ring-offset-blue-800 transition-colors duration-200 mr-2"
+                                  />
+                                  Set {setIndex + 1} ({set.reps})
+                                </label>
+                              ))}
+                              {exercise.videoUrl && (
+                                <a
+                                  href={exercise.videoUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="ml-2 p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-md transition duration-200 ease-in-out transform hover:scale-110"
+                                  aria-label={`Watch video for ${exercise.name}`}
+                                >
+                                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd"></path>
+                                  </svg>
+                                </a>
+                              )}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))
+                ) : (
+                  <div className="bg-white bg-opacity-15 backdrop-blur-sm rounded-xl p-5 sm:p-6 mb-8 shadow-2xl border border-white border-opacity-30 text-white text-center">
+                    <p className="text-lg">No specific workouts scheduled for {selectedDayName} in this week.</p>
+                  </div>
+                )}
+
+                {/* Footer */}
+                <div className="text-center text-gray-300 text-sm mt-8">
+                  <p>&copy; 2025 Fitness Tracker. All rights reserved.</p>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        // Render the React app
+        const container = document.getElementById('root');
+        const root = createRoot(container);
+        root.render(<App />);
+    </script>
+</body>
+</html>
