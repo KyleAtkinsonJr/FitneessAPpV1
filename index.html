@@ -70,69 +70,9 @@
     <!-- Babel for JSX transformation in browser (for development/simple cases) -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, collection, query, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Global variables for Firebase config and auth token
-        window.__app_id = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        window.__firebase_config = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
-        window.__initial_auth_token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        // Initialize Firebase and make it available globally
-        let app;
-        let db;
-        let auth;
-
-        try {
-          app = initializeApp(JSON.parse(window.__firebase_config));
-          db = getFirestore(app);
-          auth = getAuth(app);
-          window.firebaseApp = app; // Make app instance globally available
-          window.firebaseDb = db;   // Make db instance globally available
-          window.firebaseAuth = auth; // Make auth instance globally available
-          console.log("Firebase initialized successfully.");
-        } catch (error) {
-          console.error("Firebase initialization failed:", error);
-          // Fallback for development if Firebase config is not provided
-          if (process.env.NODE_ENV === 'development' || !window.__firebase_config || window.__firebase_config === '{}') {
-            console.warn("Using dummy Firebase instances for development. Real persistence will not work.");
-            window.firebaseApp = {};
-            window.firebaseDb = {};
-            window.firebaseAuth = {};
-          } else {
-            console.error("Firebase is not configured. Please ensure __firebase_config is provided.");
-          }
-        }
-
-        // Expose Firebase functions globally for the Babel script
-        window.getAuth = getAuth;
-        window.signInAnonymously = signInAnonymously;
-        window.signInWithCustomToken = signInWithCustomToken;
-        window.onAuthStateChanged = onAuthStateChanged;
-        window.getFirestore = getFirestore;
-        window.doc = doc;
-        window.setDoc = setDoc;
-        window.collection = collection;
-        window.query = query;
-        window.onSnapshot = onSnapshot;
-    </script>
-
     <script type="text/babel">
         const { useState, useEffect, useCallback, useRef } = React;
         const { createRoot } = ReactDOM;
-
-        // Global variables from window object
-        const appId = window.__app_id;
-        const firebaseConfig = JSON.parse(window.__firebase_config);
-        const initialAuthToken = window.__initial_auth_token;
-
-        // Firebase instances from window object
-        const app = window.firebaseApp;
-        const db = window.firebaseDb;
-        const auth = window.firebaseAuth;
 
         const MOTIVATION_QUOTES = [
           "The only bad workout is the one that didn't happen.",
@@ -255,8 +195,6 @@
 
         // Main App Component
         const App = () => {
-          const [userId, setUserId] = useState(null);
-          const [isAuthReady, setIsAuthReady] = useState(false);
           // workoutStatus now stores objects { completed: boolean, weight: number } for each set
           const [workoutStatus, setWorkoutStatus] = useState({}); // { "exercise-id": { "set-index-0": { completed: true, weight: 50 }, ... }, ... }
           const [dailyQuote, setDailyQuote] = useState('');
@@ -275,80 +213,25 @@
           const [showTimer, setShowTimer] = useState(false);
           const timerIntervalRef = useRef(null);
 
-          // Authentication and Firebase setup
+          // Load workout status from local storage on initial render or week change
           useEffect(() => {
-            const setupFirebase = async () => {
-              if (!auth || !db) {
-                console.error("Firebase not initialized correctly. Auth or DB is null.");
-                return;
-              }
-
-              if (initialAuthToken) {
-                try {
-                  await window.signInWithCustomToken(auth, initialAuthToken);
-                  console.log("Signed in with custom token.");
-                } catch (error) {
-                  console.error("Error signing in with custom token:", error);
-                  try {
-                    await window.signInAnonymously(auth);
-                    console.log("Signed in anonymously as fallback.");
-                  } catch (anonError) {
-                    console.error("Error signing in anonymously:", anonError);
-                  }
-                }
-              } else {
-                try {
-                  await window.signInAnonymously(auth);
-                  console.log("Signed in anonymously.");
-                } catch (error) {
-                  console.error("Error signing in anonymously:", error);
-                }
-              }
-
-              const unsubscribe = window.onAuthStateChanged(auth, (user) => {
-                if (user) {
-                  setUserId(user.uid);
-                  setIsAuthReady(true);
-                  console.log("Auth state changed: User ID set to", user.uid);
+            const loadWorkouts = () => {
+              try {
+                const storedData = localStorage.getItem(`workouts-${selectedWeekId}`);
+                if (storedData) {
+                  setWorkoutStatus(JSON.parse(storedData));
+                  console.log("Workouts loaded from localStorage for week:", selectedWeekId);
                 } else {
-                  setUserId(null);
-                  setIsAuthReady(true);
-                  console.log("Auth state changed: No user logged in.");
+                  setWorkoutStatus({}); // No data for this week
+                  console.log("No workouts found in localStorage for week:", selectedWeekId);
                 }
-              });
-
-              return () => unsubscribe();
+              } catch (error) {
+                console.error("Error loading from localStorage:", error);
+                setUserMessage("Error loading workout progress locally.");
+              }
             };
-
-            setupFirebase();
-          }, []);
-
-          // Fetch and listen to workout status from Firestore for the selected week
-          useEffect(() => {
-            if (!isAuthReady || !userId || !db || !selectedWeekId) {
-              console.log("Skipping Firestore fetch: isAuthReady:", isAuthReady, "userId:", userId, "db:", db, "selectedWeekId:", selectedWeekId);
-              return;
-            }
-
-            const workoutsCollectionRef = window.collection(db, `artifacts/${appId}/users/${userId}/workoutsByWeek/${selectedWeekId}/exercises`);
-            const q = window.query(workoutsCollectionRef);
-
-            const unsubscribe = window.onSnapshot(q, (snapshot) => {
-              const currentWorkoutStatus = {};
-              snapshot.forEach((doc) => {
-                const data = doc.data();
-                // Ensure setsCompleted structure is correct for new data model
-                currentWorkoutStatus[doc.id] = data.setsCompleted || {};
-              });
-              setWorkoutStatus(currentWorkoutStatus);
-              console.log("Workout status updated from Firestore for week:", selectedWeekId, currentWorkoutStatus);
-            }, (error) => {
-              console.error("Error fetching workout status:", error);
-              setUserMessage("Error loading workout progress. Please try again.");
-            });
-
-            return () => unsubscribe();
-          }, [isAuthReady, userId, db, selectedWeekId]);
+            loadWorkouts();
+          }, [selectedWeekId]); // Reload when selectedWeekId changes
 
           // Set daily motivational quote
           useEffect(() => {
@@ -394,15 +277,21 @@
             console.log("Timer reset.");
           };
 
-          // Function to handle toggling set completion and saving weight
-          const handleSetDataChange = useCallback(async (exerciseId, setIndex, field, value) => {
-            console.log(`Attempting to update ${exerciseId} set ${setIndex}, field ${field} to ${value}.`);
-            if (!userId || !db || !selectedWeekId) {
-              const msg = "Authentication or week data not ready. Cannot update workout status.";
-              console.error(msg, { userId, db, selectedWeekId });
-              setUserMessage(msg);
-              return;
+          // Function to save workout status to local storage
+          const saveWorkoutsToLocalStorage = useCallback((data) => {
+            try {
+              localStorage.setItem(`workouts-${selectedWeekId}`, JSON.stringify(data));
+              console.log("Workouts saved to localStorage for week:", selectedWeekId);
+              setUserMessage(''); // Clear any previous error messages
+            } catch (error) {
+              console.error("Error saving to localStorage:", error);
+              setUserMessage("Failed to save workout data locally. Storage might be full.");
             }
+          }, [selectedWeekId]);
+
+          // Function to handle toggling set completion and saving weight
+          const handleSetDataChange = useCallback((exerciseId, setIndex, field, value) => {
+            console.log(`Attempting to update ${exerciseId} set ${setIndex}, field ${field} to ${value}.`);
 
             // Create a deep copy to avoid direct state mutation
             const updatedWorkoutStatus = JSON.parse(JSON.stringify(workoutStatus));
@@ -413,28 +302,30 @@
               updatedWorkoutStatus[exerciseId][`set-${setIndex}`] = { completed: false, weight: '' };
             }
 
-            // Update the specific field
-            updatedWorkoutStatus[exerciseId][`set-${setIndex}`][field] = value;
+            // Explicitly handle weight as a number or empty string
+            if (field === 'weight') {
+                const numericValue = parseFloat(value);
+                updatedWorkoutStatus[exerciseId][`set-${setIndex}`][field] = isNaN(numericValue) ? '' : numericValue;
+            } else {
+                updatedWorkoutStatus[exerciseId][`set-${setIndex}`][field] = value;
+            }
+
+            // Update local state immediately for responsiveness
+            setWorkoutStatus(updatedWorkoutStatus);
+            // Save to local storage
+            saveWorkoutsToLocalStorage(updatedWorkoutStatus);
 
             // If a set is being marked complete, start timer
             if (field === 'completed' && value === true) {
               startTimer();
             }
+          }, [workoutStatus, saveWorkoutsToLocalStorage]);
 
-            // Update local state immediately for responsiveness
-            setWorkoutStatus(updatedWorkoutStatus);
-
-            // Save to Firestore
-            const workoutDocRef = window.doc(db, `artifacts/${appId}/users/${userId}/workoutsByWeek/${selectedWeekId}/exercises`, exerciseId);
-            try {
-              await window.setDoc(workoutDocRef, { setsCompleted: updatedWorkoutStatus[exerciseId], lastUpdated: new Date() }, { merge: true });
-              console.log(`Exercise ${exerciseId}, Set ${setIndex} data updated for week ${selectedWeekId}. Firestore updated.`);
-              setUserMessage('');
-            } catch (error) {
-              console.error("Error updating workout status:", error);
-              setUserMessage("Failed to update workout status. Please try again.");
-            }
-          }, [userId, db, selectedWeekId, workoutStatus]);
+          // Function to handle "Confirm Set" button click
+          const handleConfirmSet = useCallback((exerciseId, setIndex) => {
+            const currentSetStatus = workoutStatus[exerciseId]?.[`set-${setIndex}`]?.completed || false;
+            handleSetDataChange(exerciseId, setIndex, 'completed', !currentSetStatus);
+          }, [workoutStatus, handleSetDataChange]);
 
 
           // Function to check if all sets for an exercise are completed
@@ -642,25 +533,29 @@
                             <div className="flex items-center flex-wrap gap-2 sm:ml-4">
                               {exercise.sets.map((set, setIndex) => (
                                 <div key={setIndex} className="flex items-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-3 rounded-md shadow-md transition duration-200 ease-in-out">
-                                  <label htmlFor={`${exercise.id}-set-${setIndex}-${selectedWeekId}`} className="flex items-center cursor-pointer mr-2 font-extrabold">
+                                  <div className="flex flex-col items-center">
+                                    <label htmlFor={`${exercise.id}-set-${setIndex}-${selectedWeekId}-weight`} className="sr-only">Weight for Set {setIndex + 1}</label>
                                     <input
-                                      type="checkbox"
-                                      id={`${exercise.id}-set-${setIndex}-${selectedWeekId}`}
-                                      checked={!!(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].completed)}
-                                      onChange={(e) => handleSetDataChange(exercise.id, setIndex, 'completed', e.target.checked)}
-                                      className="form-checkbox h-4 w-4 text-green-400 bg-gray-700 border-gray-500 rounded focus:ring-green-400 focus:ring-offset-1 focus:ring-offset-blue-800 transition-colors duration-200 mr-2"
+                                      type="number"
+                                      id={`${exercise.id}-set-${setIndex}-${selectedWeekId}-weight`}
+                                      placeholder="Weight"
+                                      value={(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].weight) || ''}
+                                      onChange={(e) => handleSetDataChange(exercise.id, setIndex, 'weight', e.target.value)}
+                                      className="w-20 p-1 rounded-md text-gray-900 bg-white bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-300 text-center mb-1"
+                                      min="0"
                                     />
-                                    Set {setIndex + 1} ({set.reps})
-                                  </label>
-                                  <input
-                                    type="number"
-                                    placeholder="Weight"
-                                    value={(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].weight) || ''}
-                                    onChange={(e) => handleSetDataChange(exercise.id, setIndex, 'weight', e.target.value)}
-                                    className="w-20 p-1 rounded-md text-gray-900 bg-white bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-300 text-center"
-                                    min="0"
-                                  />
-                                  <span className="ml-1">kg</span>
+                                    <span className="mb-1">Set {setIndex + 1} ({set.reps})</span>
+                                    <button
+                                        onClick={() => handleConfirmSet(exercise.id, setIndex)}
+                                        className={`py-1 px-3 rounded-full text-xs font-bold transition duration-200 ease-in-out
+                                            ${(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].completed)
+                                                ? 'bg-green-500 hover:bg-green-600'
+                                                : 'bg-gray-400 hover:bg-gray-500'
+                                            } text-white`}
+                                    >
+                                        {(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].completed) ? 'Completed' : 'Confirm Set'}
+                                    </button>
+                                  </div>
                                 </div>
                               ))}
                               {exercise.videoUrl && (
