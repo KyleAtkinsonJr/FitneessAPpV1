@@ -7,7 +7,9 @@
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts - Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- PWA: Link to manifest.json -->
+    <link rel="manifest" href="manifest.json">
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -48,18 +50,16 @@
         .animate-pulse {
           animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
+        /* Hide number input arrows */
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
     </style>
-
-  <link rel="manifest" href="manifest.json">
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('service-worker.js')
-          .then(reg => console.log('Service worker registered.', reg))
-          .catch(err => console.error('Service worker registration failed.', err));
-      });
-    }
-  </script>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-blue-700 to-teal-500 text-gray-900 font-inter p-4 sm:p-6 md:p-8">
     <div id="root"></div>
@@ -93,6 +93,7 @@
           window.firebaseApp = app; // Make app instance globally available
           window.firebaseDb = db;   // Make db instance globally available
           window.firebaseAuth = auth; // Make auth instance globally available
+          console.log("Firebase initialized successfully.");
         } catch (error) {
           console.error("Firebase initialization failed:", error);
           // Fallback for development if Firebase config is not provided
@@ -256,7 +257,8 @@
         const App = () => {
           const [userId, setUserId] = useState(null);
           const [isAuthReady, setIsAuthReady] = useState(false);
-          const [workoutStatus, setWorkoutStatus] = useState({}); // { "exercise-id": { "set-index-0": true, ... }, ... }
+          // workoutStatus now stores objects { completed: boolean, weight: number } for each set
+          const [workoutStatus, setWorkoutStatus] = useState({}); // { "exercise-id": { "set-index-0": { completed: true, weight: 50 }, ... }, ... }
           const [dailyQuote, setDailyQuote] = useState('');
           const [userMessage, setUserMessage] = useState('');
 
@@ -277,7 +279,7 @@
           useEffect(() => {
             const setupFirebase = async () => {
               if (!auth || !db) {
-                console.error("Firebase not initialized correctly.");
+                console.error("Firebase not initialized correctly. Auth or DB is null.");
                 return;
               }
 
@@ -307,9 +309,11 @@
                 if (user) {
                   setUserId(user.uid);
                   setIsAuthReady(true);
+                  console.log("Auth state changed: User ID set to", user.uid);
                 } else {
                   setUserId(null);
                   setIsAuthReady(true);
+                  console.log("Auth state changed: No user logged in.");
                 }
               });
 
@@ -322,6 +326,7 @@
           // Fetch and listen to workout status from Firestore for the selected week
           useEffect(() => {
             if (!isAuthReady || !userId || !db || !selectedWeekId) {
+              console.log("Skipping Firestore fetch: isAuthReady:", isAuthReady, "userId:", userId, "db:", db, "selectedWeekId:", selectedWeekId);
               return;
             }
 
@@ -332,10 +337,11 @@
               const currentWorkoutStatus = {};
               snapshot.forEach((doc) => {
                 const data = doc.data();
+                // Ensure setsCompleted structure is correct for new data model
                 currentWorkoutStatus[doc.id] = data.setsCompleted || {};
               });
               setWorkoutStatus(currentWorkoutStatus);
-              console.log("Workout status updated from Firestore for week:", selectedWeekId);
+              console.log("Workout status updated from Firestore for week:", selectedWeekId, currentWorkoutStatus);
             }, (error) => {
               console.error("Error fetching workout status:", error);
               setUserMessage("Error loading workout progress. Please try again.");
@@ -377,6 +383,7 @@
             setTimer(REST_TIMER_DURATION);
             setIsTimerActive(true);
             setShowTimer(true);
+            console.log("Timer started.");
           };
 
           const resetTimer = () => {
@@ -384,38 +391,57 @@
             setIsTimerActive(false);
             setTimer(REST_TIMER_DURATION);
             setShowTimer(false);
+            console.log("Timer reset.");
           };
 
-          // Function to handle ticking off individual sets
-          const handleSetToggle = useCallback(async (exerciseId, setIndex, isCompleted) => {
+          // Function to handle toggling set completion and saving weight
+          const handleSetDataChange = useCallback(async (exerciseId, setIndex, field, value) => {
+            console.log(`Attempting to update ${exerciseId} set ${setIndex}, field ${field} to ${value}.`);
             if (!userId || !db || !selectedWeekId) {
-              setUserMessage("Please wait for user authentication and week data to load.");
+              const msg = "Authentication or week data not ready. Cannot update workout status.";
+              console.error(msg, { userId, db, selectedWeekId });
+              setUserMessage(msg);
               return;
             }
 
-            const currentExerciseSets = { ...(workoutStatus[exerciseId] || {}) };
-            currentExerciseSets[`set-${setIndex}`] = isCompleted;
+            // Create a deep copy to avoid direct state mutation
+            const updatedWorkoutStatus = JSON.parse(JSON.stringify(workoutStatus));
+            if (!updatedWorkoutStatus[exerciseId]) {
+              updatedWorkoutStatus[exerciseId] = {};
+            }
+            if (!updatedWorkoutStatus[exerciseId][`set-${setIndex}`]) {
+              updatedWorkoutStatus[exerciseId][`set-${setIndex}`] = { completed: false, weight: '' };
+            }
 
+            // Update the specific field
+            updatedWorkoutStatus[exerciseId][`set-${setIndex}`][field] = value;
+
+            // If a set is being marked complete, start timer
+            if (field === 'completed' && value === true) {
+              startTimer();
+            }
+
+            // Update local state immediately for responsiveness
+            setWorkoutStatus(updatedWorkoutStatus);
+
+            // Save to Firestore
             const workoutDocRef = window.doc(db, `artifacts/${appId}/users/${userId}/workoutsByWeek/${selectedWeekId}/exercises`, exerciseId);
             try {
-              await window.setDoc(workoutDocRef, { setsCompleted: currentExerciseSets, lastUpdated: new Date() }, { merge: true });
-              console.log(`Exercise ${exerciseId}, Set ${setIndex} status updated to ${isCompleted} for week ${selectedWeekId}.`);
+              await window.setDoc(workoutDocRef, { setsCompleted: updatedWorkoutStatus[exerciseId], lastUpdated: new Date() }, { merge: true });
+              console.log(`Exercise ${exerciseId}, Set ${setIndex} data updated for week ${selectedWeekId}. Firestore updated.`);
               setUserMessage('');
-
-              if (isCompleted) {
-                startTimer();
-              }
             } catch (error) {
               console.error("Error updating workout status:", error);
               setUserMessage("Failed to update workout status. Please try again.");
             }
           }, [userId, db, selectedWeekId, workoutStatus]);
 
+
           // Function to check if all sets for an exercise are completed
           const areAllSetsCompleted = (exerciseId, totalSets) => {
             const exerciseSetsStatus = workoutStatus[exerciseId] || {};
             for (let i = 0; i < totalSets; i++) {
-              if (!exerciseSetsStatus[`set-${i}`]) {
+              if (!exerciseSetsStatus[`set-${i}`] || !exerciseSetsStatus[`set-${i}`].completed) {
                 return false;
               }
             }
@@ -424,12 +450,14 @@
 
           // Navigation functions for weeks
           const goToPreviousWeek = () => {
+            console.log("Going to previous week.");
             const newDate = new Date(selectedDate);
             newDate.setDate(newDate.getDate() - 7);
             setSelectedDate(newDate);
           };
 
           const goToNextWeek = () => {
+            console.log("Going to next week.");
             const newDate = new Date(selectedDate);
             newDate.setDate(newDate.getDate() + 7);
             setSelectedDate(newDate);
@@ -437,15 +465,22 @@
 
           // Navigation functions for days within the selected week
           const goToPreviousDay = () => {
+            console.log("Going to previous day.");
             const newDate = new Date(selectedDate);
             newDate.setDate(newDate.getDate() - 1);
             setSelectedDate(newDate);
           };
 
           const goToNextDay = () => {
+            console.log("Going to next day.");
             const newDate = new Date(selectedDate);
             newDate.setDate(newDate.getDate() + 1);
             setSelectedDate(newDate);
+          };
+
+          const goToToday = () => {
+            console.log("Going to today.");
+            setSelectedDate(new Date()); // Set to current date
           };
 
           // Get scheduled workouts for the selected day
@@ -480,15 +515,15 @@
 
           return (
             <div className="min-h-screen bg-gradient-to-br from-blue-700 to-teal-500 text-gray-900 font-inter p-4 sm:p-6 md:p-8">
-              <div className="max-w-4xl mx-auto z-0 relative">
+              <div className="max-w-4xl mx-auto">
                 {/* Header */}
                 <h1 className="text-4xl sm:text-5xl font-extrabold text-center mb-6 drop-shadow-lg text-white">
-                  <span className="inline-block animate-bounce-slow">🏋️‍♀️</span> <span className="font-extrabold">Fitness Tracker</span>
+                  <span className="inline-block animate-bounce-slow">🏋️‍♀️</span> Fitness Tracker
                 </h1>
 
                 {/* Motivation Quote */}
                 <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-6 mb-8 shadow-2xl border border-white border-opacity-30">
-                  <h2 className="text-2xl font-bold mb-3 text-center text-yellow-300">Daily Motivation</h2>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold mb-3 text-center text-yellow-300">Daily Motivation</h2>
                   <p className="text-lg italic text-center leading-relaxed text-white">
                     "{dailyQuote}"
                   </p>
@@ -505,7 +540,7 @@
                 {showTimer && (
                   <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
                     <div className="bg-gradient-to-br from-blue-600 to-purple-700 rounded-2xl p-8 shadow-2xl text-white text-center border-4 border-blue-400 animate-fade-in-up">
-                      <h2 className="text-4xl font-bold mb-4">Rest Time!</h2>
+                      <h2 className="text-4xl font-extrabold mb-4">Rest Time!</h2>
                       <div className="text-7xl font-extrabold mb-6 animate-pulse">
                         {String(Math.floor(timer / 60)).padStart(2, '0')}:
                         {String(timer % 60).padStart(2, '0')}
@@ -521,37 +556,35 @@
                 )}
 
                 {/* Week Navigation and Current Week Display */}
-                <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4 mb-8 shadow-2xl border border-white border-opacity-30 text-white text-center z-0">
-                  <div className="flex items-center justify-between mb-4 gap-x-4">
+                <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4 mb-8 shadow-2xl border border-white border-opacity-30 text-white text-center">
+                  <div className="flex items-center justify-between mb-4">
                     <button
                       onClick={goToPreviousWeek}
                       className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
-                      tabIndex={0}
                     >
                       &lt; Prev Week
                     </button>
-                    <h2 className="text-xl sm:text-2xl font-extrabold text-green-300">{`Week: ${selectedWeekId}`}</h2>
+                    <h2 className="text-xl sm:text-2xl font-extrabold text-green-300">Week: {selectedWeekId}</h2>
                     <button
                       onClick={goToNextWeek}
                       className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
-                      tabIndex={0}
                     >
                       Next Week &gt;
                     </button>
                   </div>
-                  <p className="text-lg">Viewing workouts for: <span className="font-bold text-yellow-300">{selectedDate.toDateString()}</span></p>
+                  <p className="text-lg">Viewing workouts for: <span className="font-extrabold text-yellow-300">{selectedDate.toDateString()}</span></p>
                 </div>
 
                 {/* Sample Weekly Schedule - Always at top of workout content */}
                 {WORKOUT_PLAN.find(s => s.isSchedule) && (
                   <div className="bg-white bg-opacity-15 backdrop-blur-sm rounded-xl p-5 sm:p-6 mb-8 shadow-2xl border border-white border-opacity-30">
-                    <h2 className="text-2xl sm:text-3xl font-bold mb-4 text-yellow-200">Weekly Workout Schedule</h2>
+                    <h2 className="text-2xl sm:text-3xl font-extrabold mb-4 text-yellow-200">Weekly Workout Schedule</h2>
                     <div className="overflow-x-auto">
                       <table className="min-w-full bg-white bg-opacity-10 rounded-lg shadow-inner">
                         <thead>
                           <tr className="bg-blue-700 bg-opacity-50">
-                            <th className="py-3 px-4 text-left text-sm font-semibold text-gray-100 rounded-tl-lg">Day</th>
-                            <th className="py-3 px-4 text-left text-sm font-semibold text-gray-100 rounded-tr-lg">Workout</th>
+                            <th className="py-3 px-4 text-left text-sm font-extrabold text-gray-100 rounded-tl-lg">Day</th>
+                            <th className="py-3 px-4 text-left text-sm font-extrabold text-gray-100 rounded-tr-lg">Workout</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -568,31 +601,34 @@
                 )}
 
                 {/* Daily Workout Navigation */}
-                <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4 mb-8 shadow-2xl border border-white border-opacity-30 text-white text-center z-0">
-                  <div className="flex items-center justify-between mb-4 gap-x-4">
+                <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4 mb-8 shadow-2xl border border-white border-opacity-30 text-white text-center">
+                  <div className="flex items-center justify-between mb-4">
                     <button
                       onClick={goToPreviousDay}
                       className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
-                      tabIndex={0}
                     >
                       &lt; Prev Day
                     </button>
-                    <h2 className="text-xl sm:text-2xl font-extrabold text-green-300">{`Workouts for ${selectedDayName}`}</h2>
+                    <h2 className="text-xl sm:text-2xl font-extrabold text-green-300">Workouts for {selectedDayName}</h2>
                     <button
                       onClick={goToNextDay}
                       className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
-                      tabIndex={0}
                     >
                       Next Day &gt;
                     </button>
                   </div>
+                  <button
+                    onClick={goToToday}
+                    className="mt-3 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
+                  >
+                    Go to Today
+                  </button>
                 </div>
 
                 {/* Display Workouts for the Selected Day */}
                 {workoutsForToday.length > 0 ? (
                   workoutsForToday.map((section, sectionIndex) => (
                     <div key={sectionIndex} className="bg-white bg-opacity-15 backdrop-blur-sm rounded-xl p-5 sm:p-6 mb-8 shadow-2xl border border-white border-opacity-30">
-                      {/* Section titles bolder */}
                       <h2 className="text-2xl sm:text-3xl font-extrabold mb-4 text-yellow-200">{section.category}</h2>
                       <h3 className="text-xl sm:text-2xl font-extrabold mb-3 text-blue-200">{section.dayName}</h3>
                       <ul className="space-y-3">
@@ -605,16 +641,27 @@
                             </div>
                             <div className="flex items-center flex-wrap gap-2 sm:ml-4">
                               {exercise.sets.map((set, setIndex) => (
-                                <label key={setIndex} htmlFor={`${exercise.id}-set-${setIndex}-${selectedWeekId}`} className="flex items-center cursor-pointer bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-3 rounded-md shadow-md transition duration-200 ease-in-out">
+                                <div key={setIndex} className="flex items-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-3 rounded-md shadow-md transition duration-200 ease-in-out">
+                                  <label htmlFor={`${exercise.id}-set-${setIndex}-${selectedWeekId}`} className="flex items-center cursor-pointer mr-2 font-extrabold">
+                                    <input
+                                      type="checkbox"
+                                      id={`${exercise.id}-set-${setIndex}-${selectedWeekId}`}
+                                      checked={!!(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].completed)}
+                                      onChange={(e) => handleSetDataChange(exercise.id, setIndex, 'completed', e.target.checked)}
+                                      className="form-checkbox h-4 w-4 text-green-400 bg-gray-700 border-gray-500 rounded focus:ring-green-400 focus:ring-offset-1 focus:ring-offset-blue-800 transition-colors duration-200 mr-2"
+                                    />
+                                    Set {setIndex + 1} ({set.reps})
+                                  </label>
                                   <input
-                                    type="checkbox"
-                                    id={`${exercise.id}-set-${setIndex}-${selectedWeekId}`}
-                                    checked={!!(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`])}
-                                    onChange={(e) => handleSetToggle(exercise.id, setIndex, e.target.checked)}
-                                    className="form-checkbox h-4 w-4 text-green-400 bg-gray-700 border-gray-500 rounded focus:ring-green-400 focus:ring-offset-1 focus:ring-offset-blue-800 transition-colors duration-200 mr-2"
+                                    type="number"
+                                    placeholder="Weight"
+                                    value={(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].weight) || ''}
+                                    onChange={(e) => handleSetDataChange(exercise.id, setIndex, 'weight', e.target.value)}
+                                    className="w-20 p-1 rounded-md text-gray-900 bg-white bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-300 text-center"
+                                    min="0"
                                   />
-                                  Set {setIndex + 1} ({set.reps})
-                                </label>
+                                  <span className="ml-1">kg</span>
+                                </div>
                               ))}
                               {exercise.videoUrl && (
                                 <a
@@ -654,6 +701,20 @@
         const container = document.getElementById('root');
         const root = createRoot(container);
         root.render(<App />);
+    </script>
+    <!-- PWA: Register Service Worker -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/service-worker.js')
+            .then(registration => {
+              console.log('ServiceWorker registered: ', registration);
+            })
+            .catch(registrationError => {
+              console.log('ServiceWorker registration failed: ', registrationError);
+            });
+        });
+      }
     </script>
 </body>
 </html>
