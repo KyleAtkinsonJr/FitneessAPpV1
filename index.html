@@ -480,10 +480,10 @@
 
           return (
             <div className="min-h-screen bg-gradient-to-br from-blue-700 to-teal-500 text-gray-900 font-inter p-4 sm:p-6 md:p-8">
-              <div className="max-w-4xl mx-auto">
+              <div className="max-w-4xl mx-auto z-0 relative">
                 {/* Header */}
                 <h1 className="text-4xl sm:text-5xl font-extrabold text-center mb-6 drop-shadow-lg text-white">
-                  <span className="inline-block animate-bounce-slow">🏋️‍♀️</span> Fitness Tracker
+                  <span className="inline-block animate-bounce-slow">🏋️‍♀️</span> <span className="font-extrabold">Fitness Tracker</span>
                 </h1>
 
                 {/* Motivation Quote */}
@@ -521,18 +521,20 @@
                 )}
 
                 {/* Week Navigation and Current Week Display */}
-                <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4 mb-8 shadow-2xl border border-white border-opacity-30 text-white text-center">
-                  <div className="flex items-center justify-between mb-4">
+                <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4 mb-8 shadow-2xl border border-white border-opacity-30 text-white text-center z-0">
+                  <div className="flex items-center justify-between mb-4 gap-x-4">
                     <button
                       onClick={goToPreviousWeek}
                       className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
+                      tabIndex={0}
                     >
                       &lt; Prev Week
                     </button>
-                    <h2 className="text-xl sm:text-2xl font-bold text-green-300">Week: {selectedWeekId}</h2>
+                    <h2 className="text-xl sm:text-2xl font-extrabold text-green-300">{`Week: ${selectedWeekId}`}</h2>
                     <button
                       onClick={goToNextWeek}
                       className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
+                      tabIndex={0}
                     >
                       Next Week &gt;
                     </button>
@@ -566,18 +568,20 @@
                 )}
 
                 {/* Daily Workout Navigation */}
-                <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4 mb-8 shadow-2xl border border-white border-opacity-30 text-white text-center">
-                  <div className="flex items-center justify-between mb-4">
+                <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4 mb-8 shadow-2xl border border-white border-opacity-30 text-white text-center z-0">
+                  <div className="flex items-center justify-between mb-4 gap-x-4">
                     <button
                       onClick={goToPreviousDay}
                       className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
+                      tabIndex={0}
                     >
                       &lt; Prev Day
                     </button>
-                    <h2 className="text-xl sm:text-2xl font-bold text-green-300">Workouts for {selectedDayName}</h2>
+                    <h2 className="text-xl sm:text-2xl font-extrabold text-green-300">{`Workouts for ${selectedDayName}`}</h2>
                     <button
                       onClick={goToNextDay}
                       className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
+                      tabIndex={0}
                     >
                       Next Day &gt;
                     </button>
@@ -588,8 +592,9 @@
                 {workoutsForToday.length > 0 ? (
                   workoutsForToday.map((section, sectionIndex) => (
                     <div key={sectionIndex} className="bg-white bg-opacity-15 backdrop-blur-sm rounded-xl p-5 sm:p-6 mb-8 shadow-2xl border border-white border-opacity-30">
-                      <h2 className="text-2xl sm:text-3xl font-bold mb-4 text-yellow-200">{section.category}</h2>
-                      <h3 className="text-xl sm:text-2xl font-semibold mb-3 text-blue-200">{section.dayName}</h3>
+                      {/* Section titles bolder */}
+                      <h2 className="text-2xl sm:text-3xl font-extrabold mb-4 text-yellow-200">{section.category}</h2>
+                      <h3 className="text-xl sm:text-2xl font-extrabold mb-3 text-blue-200">{section.dayName}</h3>
                       <ul className="space-y-3">
                         {section.exercises.map((exercise) => (
                           <li key={exercise.id} className={`flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white bg-opacity-5 rounded-md p-3 shadow-sm hover:bg-opacity-10 transition-colors ${areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'border-l-4 border-green-500' : ''}`}>
