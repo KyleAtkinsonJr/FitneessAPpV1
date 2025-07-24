@@ -335,6 +335,16 @@
             handleSetDataChange(exerciseId, setIndex, 'completed', !currentSetStatus);
           }, [workoutStatus, handleSetDataChange]);
 
+          // Function to handle note changes
+          const handleNoteChange = useCallback((exerciseId, noteValue) => {
+            const updatedWorkoutStatus = JSON.parse(JSON.stringify(workoutStatus));
+            if (!updatedWorkoutStatus[exerciseId]) {
+              updatedWorkoutStatus[exerciseId] = {};
+            }
+            updatedWorkoutStatus[exerciseId].note = noteValue;
+            setWorkoutStatus(updatedWorkoutStatus);
+            saveWorkoutsToLocalStorage(updatedWorkoutStatus);
+          }, [workoutStatus, saveWorkoutsToLocalStorage]);
 
           // Function to check if all sets for an exercise are completed
           const areAllSetsCompleted = (exerciseId, totalSets) => {
@@ -520,7 +530,12 @@
                                   </div>
                                   {/* Complete exercise button */}
                                   <button
-                                    onClick={() => handleConfirmSet(exercise.id, exercise.sets.length)}
+                                    onClick={() => {
+                                      // Mark all sets as complete for this exercise
+                                      for (let i = 0; i < exercise.sets.length; i++) {
+                                        handleSetDataChange(exercise.id, i, 'completed', true);
+                                      }
+                                    }}
                                     className="mt-2 sm:mt-0 py-1 px-3 rounded-full text-xs font-bold transition duration-200 ease-in-out"
                                     style={{background: areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'var(--badge-green)' : 'var(--electric-blue)', color: '#fff'}}
                                   >
