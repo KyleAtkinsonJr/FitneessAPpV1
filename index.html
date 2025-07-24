@@ -526,6 +526,14 @@
                                         </span>
                                       )}
                                       <span className="mb-1" style={{color: "var(--muted)"}}>Set {setIndex + 1} ({set.reps})</span>
+                                      {/* Intensity marker FIXED: now inside set.map */}
+                                      <span className="ml-2 px-2 py-1 rounded-full font-bold text-xs"
+                                        style={{
+                                          background: parseInt(set.reps) >= 15 ? "var(--badge-red)" : parseInt(set.reps) >= 10 ? "var(--badge-yellow)" : "var(--badge-blue)",
+                                          color: "#fff"
+                                        }}>
+                                        {parseInt(set.reps) >= 15 ? "High" : parseInt(set.reps) >= 10 ? "Moderate" : "Low"}
+                                      </span>
                                       <button
                                         onClick={() => handleConfirmSet(exercise.id, setIndex)}
                                         className="py-1 px-3 rounded-full text-xs font-bold transition duration-200 ease-in-out"
