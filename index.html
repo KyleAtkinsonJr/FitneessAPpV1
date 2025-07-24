@@ -8,59 +8,64 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts - Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- PWA: Link to manifest.json -->
     <link rel="manifest" href="manifest.json">
     <style>
-        :root {
-            --bg-primary: #F6F8FC;
-            --card-gradient: linear-gradient(135deg, #4F8CFF 0%, #FFB86C 100%);
-            --electric-blue: #4F8CFF;
-            --coral: #FF6B6B;
-            --yellow: #FFD93D;
-            --navy: #232946;
-            --gray: #E0E0E0;
-            --muted: #94989A;
-            --badge-green: #3DDC97;
-            --badge-red: #FF6B6B;
-            --badge-yellow: #FFD93D;
-            --badge-blue: #4F8CFF;
-            --text-primary: #232946;
-            --text-secondary: #94989A;
-            --border-input: #E0E0E0;
-            --card-radius: 1.5rem;
-        }
         body {
             font-family: 'Inter', sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
         }
-        .bounce-slow { animation: bounce-slow 2s infinite ease-in-out;}
-        @keyframes bounce-slow {
-          0%, 100% { transform: translateY(0);}
-          50% { transform: translateY(-5px);}
+        /* Custom dark theme for Uber-like look */
+        .uber-bg {
+            background: linear-gradient(135deg, #18181b 0%, #23272f 100%);
         }
-        .pulse { animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;}
-        @keyframes pulse {
-          0%, 100% { opacity: 1;}
-          50% { opacity: 0.7;}
+        .uber-card {
+            background: linear-gradient(135deg, #23272f 0%, #18181b 100%);
+            border: 1px solid #23272f;
         }
-        input[type="number"]::-webkit-outer-spin-button,
-        input[type="number"]::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
+        .uber-accent {
+            background: linear-gradient(90deg, #00e6a0 0%, #00bfff 100%);
         }
-        input[type="number"] { -moz-appearance: textfield;}
+        .uber-accent-text {
+            color: #00e6a0;
+        }
+        .uber-btn {
+            background: linear-gradient(90deg, #00e6a0 0%, #00bfff 100%);
+            color: #18181b;
+        }
+        .uber-btn:hover {
+            background: linear-gradient(90deg, #00bfff 0%, #00e6a0 100%);
+            color: #fff;
+        }
+        .uber-border {
+            border-color: #00e6a0;
+        }
+        .uber-shadow {
+            box-shadow: 0 4px 24px 0 rgba(0, 230, 160, 0.15), 0 1.5px 6px 0 rgba(0, 191, 255, 0.10);
+        }
+        .uber-input {
+            background: #23272f;
+            color: #fff;
+            border: 1px solid #00e6a0;
+        }
+        .uber-input:focus {
+            border-color: #00bfff;
+            outline: none;
+        }
+        .uber-label {
+            color: #b1b1b1;
+        }
     </style>
 </head>
-<body class="min-h-screen font-inter p-4 sm:p-6 md:p-8" style="background: var(--bg-primary); color: var(--text-primary);">
+<body class="uber-bg min-h-screen text-white font-inter p-4 sm:p-6 md:p-8">
     <div id="root"></div>
 
     <!-- React and ReactDOM CDN -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX transformation in browser (for development/simple cases) -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Use Babel with env and react presets for JSX compilation -->
-    <script type="text/babel" data-presets="env,react">
+    <script type="text/babel">
         const { useState, useEffect, useCallback, useRef } = React;
         const { createRoot } = ReactDOM;
 
@@ -143,7 +148,7 @@
                 dayKey: "cardio-late-start",
                 exercises: [
                   { id: "cardio-late-bike-elliptical", name: "60 mins on the Bike or Elliptical", sets: [{ reps: "60 mins" }], videoUrl: "https://www.youtube.com/watch?v=9mhcHHUxMuQ" },
-                  { id: "cardio-late-spin-step", name: "45 mins Spin + 15 mins Step Machine", sets: [{ reps: "45/15 mins" }], videoUrl: "https://www.youtube.com/watch?v=S3Qv6d91_G0" }, // General spin class
+                  { id: "cardio-late-spin-step", name: "45 mins Spin + 15 mins Step Machine", sets: [{ reps: "45/15 mins" }], videoUrl: "https://www.youtube.com/watch?v=S3Qv6d91_G0" },
                 ],
               },
             ],
@@ -158,7 +163,7 @@
               { day: "Thursday", workout: "60-min elliptical or spin + steps (late start)", workoutKeys: ["cardio-late-start"] },
               { day: "Friday", workout: "Strength (Upper Pull) + 30-min steps (off work)", workoutKeys: ["strength-upper-pull", "cardio-days-off"] },
               { day: "Saturday", workout: "Optional full body + 30-min steps (off work)", workoutKeys: ["strength-full-body", "cardio-days-off"] },
-              { day: "Sunday", workout: "60-min cardio or rest (if needed)", workoutKeys: ["cardio-late-start"] }, // Assuming 60-min cardio maps to late-start cardio
+              { day: "Sunday", workout: "60-min cardio or rest (if needed)", workoutKeys: ["cardio-late-start"] },
             ],
           },
         ];
@@ -178,48 +183,35 @@
         const getISOWeekDate = (date) => {
           const d = new Date(date.valueOf());
           const dayNum = d.getDay();
-          d.setDate(d.getDate() + 3 - (dayNum === 0 ? 7 : dayNum)); // Set to Thursday of the current week (ISO week starts Monday)
-          const week1 = new Date(d.getFullYear(), 0, 4); // Jan 4th is always in week 1
+          d.setDate(d.getDate() + 3 - (dayNum === 0 ? 7 : dayNum));
+          const week1 = new Date(d.getFullYear(), 0, 4);
           return d.getFullYear() + '-W' + String(1 + Math.ceil(((d.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7)).padStart(2, '0');
         };
 
         // Main App Component
         const App = () => {
           // workoutStatus now stores objects { completed: boolean, weight: number } for each set
-          const [workoutStatus, setWorkoutStatus] = useState({}); // { "exercise-id": { "set-index-0": { completed: true, weight: 50 }, ... }, ... }
+          const [workoutStatus, setWorkoutStatus] = useState({});
           const [dailyQuote, setDailyQuote] = useState('');
           const [userMessage, setUserMessage] = useState('');
 
           // Date/Week/Day Navigation States
-          const [selectedDate, setSelectedDate] = useState(new Date()); // Represents the date for the currently viewed day/week
+          const [selectedDate, setSelectedDate] = useState(new Date());
           const selectedWeekId = getISOWeekDate(selectedDate);
           const selectedDayName = getDayName(selectedDate);
-          const selectedDayIndex = selectedDate.getDay(); // 0 for Sunday, 1 for Monday
 
           // Timer state
-          const REST_TIMER_DURATION = 60; // 1 minute in seconds
+          const REST_TIMER_DURATION = 60;
           const [timer, setTimer] = useState(REST_TIMER_DURATION);
           const [isTimerActive, setIsTimerActive] = useState(false);
           const [showTimer, setShowTimer] = useState(false);
           const timerIntervalRef = useRef(null);
 
-          // Calculate daySummary for progress bar and set summary
-          const getDaySummary = () => {
-            let total = 0;
-            let completed = 0;
-            workoutsForToday.forEach(section => {
-              section.exercises.forEach(exercise => {
-                total += exercise.sets.length;
-                for (let i = 0; i < exercise.sets.length; i++) {
-                  if (workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${i}`] && workoutStatus[exercise.id][`set-${i}`].completed) {
-                    completed++;
-                  }
-                }
-              });
-            });
-            return { total, completed };
-          };
-          const daySummary = getDaySummary();
+          // Custom schedule state for swapping days
+          const [customSchedule, setCustomSchedule] = useState(WORKOUT_PLAN.find(s => s.isSchedule).schedule);
+          const [swapModalOpen, setSwapModalOpen] = useState(false);
+          const [swapDayA, setSwapDayA] = useState('');
+          const [swapDayB, setSwapDayB] = useState('');
 
           // Load workout status from local storage on initial render or week change
           useEffect(() => {
@@ -228,18 +220,15 @@
                 const storedData = localStorage.getItem(`workouts-${selectedWeekId}`);
                 if (storedData) {
                   setWorkoutStatus(JSON.parse(storedData));
-                  console.log("Workouts loaded from localStorage for week:", selectedWeekId);
                 } else {
-                  setWorkoutStatus({}); // No data for this week
-                  console.log("No workouts found in localStorage for week:", selectedWeekId);
+                  setWorkoutStatus({});
                 }
               } catch (error) {
-                console.error("Error loading from localStorage:", error);
                 setUserMessage("Error loading workout progress locally.");
               }
             };
             loadWorkouts();
-          }, [selectedWeekId]); // Reload when selectedWeekId changes
+          }, [selectedWeekId]);
 
           // Set daily motivational quote
           useEffect(() => {
@@ -266,7 +255,6 @@
               clearInterval(timerIntervalRef.current);
               setIsTimerActive(false);
             }
-
             return () => clearInterval(timerIntervalRef.current);
           }, [isTimerActive, timer]);
 
@@ -274,7 +262,6 @@
             setTimer(REST_TIMER_DURATION);
             setIsTimerActive(true);
             setShowTimer(true);
-            console.log("Timer started.");
           };
 
           const resetTimer = () => {
@@ -282,26 +269,20 @@
             setIsTimerActive(false);
             setTimer(REST_TIMER_DURATION);
             setShowTimer(false);
-            console.log("Timer reset.");
           };
 
-          // Function to save workout status to local storage
+          // Save workout status to local storage
           const saveWorkoutsToLocalStorage = useCallback((data) => {
             try {
               localStorage.setItem(`workouts-${selectedWeekId}`, JSON.stringify(data));
-              console.log("Workouts saved to localStorage for week:", selectedWeekId);
-              setUserMessage(''); // Clear any previous error messages
+              setUserMessage('');
             } catch (error) {
-              console.error("Error saving to localStorage:", error);
               setUserMessage("Failed to save workout data locally. Storage might be full.");
             }
           }, [selectedWeekId]);
 
-          // Function to handle toggling set completion and saving weight
+          // Handle set data change
           const handleSetDataChange = useCallback((exerciseId, setIndex, field, value) => {
-            console.log(`Attempting to update ${exerciseId} set ${setIndex}, field ${field} to ${value}.`);
-
-            // Create a deep copy to avoid direct state mutation
             const updatedWorkoutStatus = JSON.parse(JSON.stringify(workoutStatus));
             if (!updatedWorkoutStatus[exerciseId]) {
               updatedWorkoutStatus[exerciseId] = {};
@@ -309,44 +290,26 @@
             if (!updatedWorkoutStatus[exerciseId][`set-${setIndex}`]) {
               updatedWorkoutStatus[exerciseId][`set-${setIndex}`] = { completed: false, weight: '' };
             }
-
-            // Explicitly handle weight as a number or empty string
             if (field === 'weight') {
                 const numericValue = parseFloat(value);
                 updatedWorkoutStatus[exerciseId][`set-${setIndex}`][field] = isNaN(numericValue) ? '' : numericValue;
             } else {
                 updatedWorkoutStatus[exerciseId][`set-${setIndex}`][field] = value;
             }
-
-            // Update local state immediately for responsiveness
             setWorkoutStatus(updatedWorkoutStatus);
-            // Save to local storage
             saveWorkoutsToLocalStorage(updatedWorkoutStatus);
-
-            // If a set is being marked complete, start timer
             if (field === 'completed' && value === true) {
               startTimer();
             }
           }, [workoutStatus, saveWorkoutsToLocalStorage]);
 
-          // Function to handle "Confirm Set" button click
+          // Confirm set button
           const handleConfirmSet = useCallback((exerciseId, setIndex) => {
             const currentSetStatus = workoutStatus[exerciseId]?.[`set-${setIndex}`]?.completed || false;
             handleSetDataChange(exerciseId, setIndex, 'completed', !currentSetStatus);
           }, [workoutStatus, handleSetDataChange]);
 
-          // Function to handle note changes
-          const handleNoteChange = useCallback((exerciseId, noteValue) => {
-            const updatedWorkoutStatus = JSON.parse(JSON.stringify(workoutStatus));
-            if (!updatedWorkoutStatus[exerciseId]) {
-              updatedWorkoutStatus[exerciseId] = {};
-            }
-            updatedWorkoutStatus[exerciseId].note = noteValue;
-            setWorkoutStatus(updatedWorkoutStatus);
-            saveWorkoutsToLocalStorage(updatedWorkoutStatus);
-          }, [workoutStatus, saveWorkoutsToLocalStorage]);
-
-          // Function to check if all sets for an exercise are completed
+          // Check if all sets for an exercise are completed
           const areAllSetsCompleted = (exerciseId, totalSets) => {
             const exerciseSetsStatus = workoutStatus[exerciseId] || {};
             for (let i = 0; i < totalSets; i++) {
@@ -359,14 +322,12 @@
 
           // Navigation functions for weeks
           const goToPreviousWeek = () => {
-            console.log("Going to previous week.");
             const newDate = new Date(selectedDate);
             newDate.setDate(newDate.getDate() - 7);
             setSelectedDate(newDate);
           };
 
           const goToNextWeek = () => {
-            console.log("Going to next week.");
             const newDate = new Date(selectedDate);
             newDate.setDate(newDate.getDate() + 7);
             setSelectedDate(newDate);
@@ -374,34 +335,28 @@
 
           // Navigation functions for days within the selected week
           const goToPreviousDay = () => {
-            console.log("Going to previous day.");
             const newDate = new Date(selectedDate);
             newDate.setDate(newDate.getDate() - 1);
             setSelectedDate(newDate);
           };
 
           const goToNextDay = () => {
-            console.log("Going to next day.");
             const newDate = new Date(selectedDate);
             newDate.setDate(newDate.getDate() + 1);
             setSelectedDate(newDate);
           };
 
           const goToToday = () => {
-            console.log("Going to today.");
-            setSelectedDate(new Date()); // Set to current date
+            setSelectedDate(new Date());
           };
-
-          // --- Drag & Swap Logic ---
-          // For demo: dropdown swap (drag-and-drop would require more code/libs)
-          const [customSchedule, setCustomSchedule] = useState(WORKOUT_PLAN.find(s => s.isSchedule).schedule);
-          const [swapModalOpen, setSwapModalOpen] = useState(false);
-          const [swapDayA, setSwapDayA] = useState('');
-          const [swapDayB, setSwapDayB] = useState('');
 
           // Swap modal logic
           const openSwapModal = () => setSwapModalOpen(true);
-          const closeSwapModal = () => { setSwapDayA(''); setSwapDayB(''); setSwapModalOpen(false);}
+          const closeSwapModal = () => {
+            setSwapDayA('');
+            setSwapDayB('');
+            setSwapModalOpen(false);
+          };
           const handleSwapDays = () => {
             const idxA = customSchedule.findIndex(d => d.day === swapDayA);
             const idxB = customSchedule.findIndex(d => d.day === swapDayB);
@@ -413,7 +368,7 @@
             }
           };
 
-          // Previous week status for progress tracking
+          // Get previous week's workout status for weight carry-over
           const getPreviousWeekStatus = () => {
             const prevWeekDate = new Date(selectedDate);
             prevWeekDate.setDate(prevWeekDate.getDate() - 7);
@@ -449,207 +404,233 @@
             });
             return exercisesForDay;
           };
+
           const workoutsForToday = getWorkoutsForSelectedDay();
 
-          // --- UI ---
           return (
-            <React.Fragment>
-              <div className="min-h-screen font-inter p-4 sm:p-6 md:p-8" style={{background: "var(--bg-primary)", color: "var(--text-primary)"}}>
-                <div className="max-w-4xl mx-auto">
-                  {/* Big Bold Header */}
-                  <h1 className="text-5xl font-extrabold text-center mb-8" style={{color: "var(--electric-blue)", letterSpacing: "0.03em"}}>
-                    <span className="inline-block bounce-slow">🏋️‍♀️</span> Fitness Energy
-                  </h1>
-                  {/* Motivational Quote */}
-                  <div className="rounded-2xl p-6 mb-8 shadow-xl flex flex-col sm:flex-row items-center justify-between" style={{background: "var(--card-gradient)", color: "#fff", borderRadius: "var(--card-radius)"}}>
-                    <div>
-                      <h2 className="text-2xl font-extrabold mb-2">Keep It Up!</h2>
-                      <p className="text-lg font-bold">{dailyQuote}</p>
-                    </div>
-                    <span className="mt-4 sm:mt-0 px-4 py-2 rounded-full font-bold" style={{background: "var(--badge-green)", color: "#fff"}}>🔥 Streak: 5 days</span>
+            <div className="max-w-4xl mx-auto">
+
+            {/* Header */}
+            <h1 className="text-4xl sm:text-5xl font-extrabold text-center mb-6 uber-accent-text drop-shadow-lg">
+              <span className="inline-block animate-bounce-slow">🏋️‍♀️</span> Fitness Tracker
+            </h1>
+
+            {/* Motivation Quote */}
+            <div className="uber-card rounded-xl p-6 mb-8 uber-shadow">
+              <h2 className="text-2xl sm:text-3xl font-extrabold mb-3 text-center uber-accent-text">Daily Motivation</h2>
+              <p className="text-lg italic text-center leading-relaxed text-gray-300">
+                "{dailyQuote}"
+              </p>
+            </div>
+
+            {/* User Message/Error Display */}
+            {userMessage && (
+              <div className="bg-red-600 bg-opacity-80 text-white p-3 rounded-lg mb-4 text-center uber-shadow">
+                {userMessage}
+              </div>
+            )}
+
+            {/* Rest Timer */}
+            {showTimer && (
+              <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
+                <div className="uber-card rounded-2xl p-8 uber-shadow text-white text-center border-4 uber-border animate-fade-in-up">
+                  <h2 className="text-4xl font-extrabold mb-4 uber-accent-text">Rest Time!</h2>
+                  <div className="text-7xl font-extrabold mb-6 animate-pulse uber-accent-text">
+                    {String(Math.floor(timer / 60)).padStart(2, '0')}:
+                    {String(timer % 60).padStart(2, '0')}
                   </div>
-                  {/* Progress Overview */}
-                  <div className="rounded-2xl p-6 mb-8 shadow-xl" style={{background: "#fff", borderRadius: "var(--card-radius)"}}>
-                    <h2 className="text-xl font-extrabold mb-4" style={{color: "var(--electric-blue)"}}>Progress Overview</h2>
-                    <div className="flex flex-col sm:flex-row items-center gap-6">
-                      <div className="flex flex-col items-center">
-                        <span className="text-3xl font-extrabold" style={{color: "var(--coral)"}}>72%</span>
-                        <span className="text-sm" style={{color: "var(--muted)"}}>Week Complete</span>
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <span className="text-3xl font-extrabold" style={{color: "var(--yellow)"}}>4</span>
-                        <span className="text-sm" style={{color: "var(--muted)"}}>Workouts Left</span>
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <span className="text-3xl font-extrabold" style={{color: "var(--badge-blue)"}}>8,200</span>
-                        <span className="text-sm" style={{color: "var(--muted)"}}>Calories Burned</span>
-                      </div>
-                    </div>
-                    {/* Simple progress bar */}
-                    <div className="w-full h-3 rounded-full mt-6" style={{background: "var(--gray)"}}>
-                      <div className="h-3 rounded-full" style={{width: "72%", background: "var(--electric-blue)", transition: "width 0.5s"}}></div>
-                    </div>
-                  </div>
-                  {/* Today's Workout - Details & Summary */}
-                  <div className="rounded-2xl p-6 mb-8 shadow-xl" style={{background: "var(--card-gradient)", color: "#fff", borderRadius: "var(--card-radius)", position: "relative"}}>
-                    <h2 className="text-2xl font-extrabold mb-4">Today’s Workout</h2>
-                    {/* Summary of sets completed */}
-                    <div className="mb-4">
-                      <span className="text-lg font-semibold">Completed {daySummary.completed} of {daySummary.total} sets</span>
-                      <div className="w-full h-2 rounded-full mt-2" style={{background: "rgba(255,255,255,0.3)"}}>
-                        <div
-                          className="h-2 rounded-full"
-                          style={{width: `${daySummary.total === 0 ? 0 : (daySummary.completed / daySummary.total) * 100}%`, background: "var(--badge-green)", transition: "width 0.5s"}}
-                        ></div>
-                      </div>
-                    </div>
-                    {workoutsForToday.length > 0 ? (
-                      workoutsForToday.map((section, sectionIndex) => (
-                        <div key={sectionIndex} className="rounded-xl p-5 mb-8 shadow-xl" style={{background: "rgba(255,255,255,0.15)", borderRadius: "1rem"}}>
-                          <h3 className="text-xl font-extrabold mb-3" style={{color: "var(--yellow)"}}>{section.dayName}</h3>
-                          <ul className="space-y-6">
-                            {section.exercises.map((exercise) => (
-                              <li
-                                key={exercise.id}
-                                className="flex flex-col rounded-lg p-4 shadow-sm hover:bg-white hover:bg-opacity-20 transition-colors border-l-4"
-                                style={{
-                                  background: "rgba(255,255,255,0.10)",
-                                  borderColor: areAllSetsCompleted(exercise.id, exercise.sets.length) ? "var(--badge-green)" : "var(--electric-blue)"
-                                }}
-                              >
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between">
-                                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2 sm:mb-0">
-                                    <span
-                                      className={`text-lg font-semibold flex items-center gap-2 ${areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'line-through text-gray-200' : 'text-white'}`}
-                                    >
-                                      {exercise.name}
-                                      {areAllSetsCompleted(exercise.id, exercise.sets.length) && (
-                                        <span className="ml-2 px-2 py-1 rounded-full pulse" style={{background: "var(--badge-green)", color: "#fff", fontSize: "0.8rem"}}>Done!</span>
-                                      )}
-                                    </span>
-                                  </div>
-                                  {/* Complete exercise button */}
-                                  <button
-                                    onClick={() => {
-                                      // Mark all sets as complete for this exercise
-                                      for (let i = 0; i < exercise.sets.length; i++) {
-                                        handleSetDataChange(exercise.id, i, 'completed', true);
-                                      }
-                                    }}
-                                    className="mt-2 sm:mt-0 py-1 px-3 rounded-full text-xs font-bold transition duration-200 ease-in-out"
-                                    style={{background: areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'var(--badge-green)' : 'var(--electric-blue)', color: '#fff'}}
-                                  >
-                                    {areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'All Done' : 'Complete Exercise'}
-                                  </button>
-                                </div>
-                                <div className="flex flex-wrap gap-3 mt-3">
-                                  {exercise.sets.map((set, setIndex) => (
-                                    <div
-                                      key={setIndex}
-                                      className="flex flex-col items-center rounded-md shadow transition duration-200 ease-in-out hover:scale-105 hover:shadow-lg p-2"
-                                      style={{background: "#fff", color: "var(--text-primary)", border: "1px solid var(--border-input)"}}
-                                    >
-                                      <label htmlFor={`${exercise.id}-set-${setIndex}-${selectedWeekId}-weight`} className="sr-only">
-                                        Weight for Set {setIndex + 1}
-                                      </label>
-                                      <input
-                                        type="number"
-                                        id={`${exercise.id}-set-${setIndex}-${selectedWeekId}-weight`}
-                                        placeholder="Weight"
-                                        value={(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].weight) || ''}
-                                        onChange={(e) => handleSetDataChange(exercise.id, setIndex, 'weight', e.target.value)}
-                                        className="w-20 p-1 rounded-md text-center mb-1 transition duration-200"
-                                        style={{
-                                          background: "var(--gray)",
-                                          color: "var(--text-primary)",
-                                          border: "1px solid var(--border-input)"
-                                        }}
-                                        min="0"
-                                      />
-                                      {/* Previous week metrics */}
-                                      {previousWeekStatus[exercise.id] && previousWeekStatus[exercise.id][`set-${setIndex}`] && (
-                                        <span className="text-xs mt-1" style={{color: "var(--muted)", fontStyle: "italic"}}>
-                                          Last week: <span style={{fontWeight: "bold"}}>{previousWeekStatus[exercise.id][`set-${setIndex}`].weight || '—'} kg</span>, <span style={{fontWeight: "bold"}}>{previousWeekStatus[exercise.id][`set-${setIndex}`].reps || set.reps} reps</span>
-                                        </span>
-                                      )}
-                                      <span className="text-xs" style={{color: "var(--muted)"}}>Set {setIndex + 1} ({set.reps})</span>
-                                      <span
-                                        className="mt-1 px-2 py-1 rounded-full font-bold text-xs"
-                                        style={{
-                                          background: parseInt(set.reps) >= 15 ? "var(--badge-red)" : parseInt(set.reps) >= 10 ? "var(--badge-yellow)" : "var(--badge-blue)",
-                                          color: "#fff"
-                                        }}
-                                      >
-                                        {parseInt(set.reps) >= 15 ? "High" : parseInt(set.reps) >= 10 ? "Moderate" : "Low"}
-                                      </span>
-                                      <button
-                                        onClick={() => handleConfirmSet(exercise.id, setIndex)}
-                                        className="mt-1 py-1 px-3 rounded-full text-xs font-bold transition duration-200 ease-in-out"
-                                        style={{
-                                          background: workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].completed
-                                            ? "var(--badge-green)"
-                                            : "var(--electric-blue)",
-                                          color: "#fff"
-                                        }}
-                                      >
-                                        {workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].completed ? 'Completed' : 'Confirm Set'}
-                                      </button>
-                                    </div>
-                                  ))}
-                                  {exercise.videoUrl && (
-                                    <a
-                                      href={exercise.videoUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="p-2 rounded-full shadow-md transition duration-200 ease-in-out transform hover:scale-110 flex items-center justify-center"
-                                      style={{background: "var(--electric-blue)", color: "#fff"}}
-                                      aria-label={`Watch video for ${exercise.name}`}
-                                    >
-                                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                        <path
-                                          fillRule="evenodd"
-                                          d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-                                          clipRule="evenodd"
-                                        ></path>
-                                      </svg>
-                                    </a>
-                                  )}
-                                </div>
-                                {/* Note input */}
-                                <div className="mt-4">
-                                  <label htmlFor={`${exercise.id}-note`} className="block text-xs font-medium mb-1" style={{color: "var(--muted)"}}>
-                                    Notes (e.g., how you felt, adjustments made)
-                                  </label>
-                                  <textarea
-                                    id={`${exercise.id}-note`}
-                                    rows="2"
-                                    className="w-full p-2 rounded-md border text-sm"
-                                    style={{background: "#fff", color: "var(--text-primary)", borderColor: "var(--border-input)"}}
-                                    placeholder="Add notes here..."
-                                    value={(workoutStatus[exercise.id] && workoutStatus[exercise.id].note) || ''}
-                                    onChange={(e) => handleNoteChange(exercise.id, e.target.value)}
-                                  ></textarea>
-                                </div>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="rounded-xl p-5 mb-8 shadow-xl text-center" style={{background: "#fff", border: "1px solid var(--border-input)"}}>
-                        <p className="text-lg" style={{color: "var(--muted)"}}>No specific workouts scheduled for {selectedDayName} in this week.</p>
-                      </div>
-                    )}
-                    {/* Footer */}
-                    <div className="text-center text-sm mt-8" style={{color: "var(--muted)"}}>
-                      <p>&copy; 2025 Fitness Energy. All rights reserved.</p>
-                    </div>
-                  </div>
+                  <button
+                    onClick={resetTimer}
+                    className="uber-btn font-bold py-3 px-6 rounded-full uber-shadow transition duration-300 ease-in-out transform hover:scale-105"
+                  >
+                    Skip Rest
+                  </button>
                 </div>
               </div>
-            </React.Fragment>
-        );
-    };
+            )}
+
+            {/* Week Navigation and Current Week Display */}
+            <div className="uber-card rounded-xl p-4 mb-8 uber-shadow text-white text-center">
+              <div className="flex items-center justify-between mb-4 gap-x-4">
+                <button
+                  onClick={goToPreviousWeek}
+                  className="uber-btn font-bold py-2 px-4 rounded-full uber-shadow transition duration-300 ease-in-out transform hover:scale-105"
+                >
+                  &lt; Prev Week
+                </button>
+                <h2 className="text-xl sm:text-2xl font-extrabold uber-accent-text">Week: {selectedWeekId}</h2>
+                <button
+                  onClick={goToNextWeek}
+                  className="uber-btn font-bold py-2 px-4 rounded-full uber-shadow transition duration-300 ease-in-out transform hover:scale-105"
+                >
+                  Next Week &gt;
+                </button>
+              </div>
+              <p className="text-lg">Viewing workouts for: <span className="font-extrabold uber-accent-text">{selectedDate.toDateString()}</span></p>
+            </div>
+
+            {/* Sample Weekly Schedule */}
+            <div className="uber-card rounded-xl p-5 sm:p-6 mb-8 uber-shadow">
+              <h2 className="text-2xl sm:text-3xl font-extrabold mb-4 uber-accent-text">Weekly Workout Schedule</h2>
+              <div className="overflow-x-auto">
+                <table className="min-w-full rounded-lg uber-shadow">
+                  <thead>
+                    <tr className="uber-accent">
+                      <th className="py-3 px-4 text-left text-sm font-extrabold text-black rounded-tl-lg">Day</th>
+                      <th className="py-3 px-4 text-left text-sm font-extrabold text-black rounded-tr-lg">Workout</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {customSchedule.map((item, idx) => (
+                      <tr key={idx} className={`${item.day === selectedDayName ? 'uber-accent-text bg-opacity-10' : 'text-gray-300'} hover:bg-opacity-20 transition-colors`}>
+                        <td className="py-3 px-4 text-base">{item.day}</td>
+                        <td className="py-3 px-4 text-base">{item.workout}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <button
+                className="mt-4 uber-btn font-bold py-2 px-4 rounded-full uber-shadow"
+                onClick={openSwapModal}
+              >
+                Swap Workout/Cardio Days
+              </button>
+              {swapModalOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
+                  <div className="uber-card rounded-xl p-6 uber-shadow text-white w-full max-w-xs">
+                    <h3 className="font-bold mb-2 uber-accent-text">Swap Days</h3>
+                    <select className="mb-2 w-full p-2 rounded uber-input" value={swapDayA} onChange={e => setSwapDayA(e.target.value)}>
+                      <option value="">Select Day A</option>
+                      {customSchedule.map(d => <option key={d.day} value={d.day}>{d.day}</option>)}
+                    </select>
+                    <select className="mb-4 w-full p-2 rounded uber-input" value={swapDayB} onChange={e => setSwapDayB(e.target.value)}>
+                      <option value="">Select Day B</option>
+                      {customSchedule.map(d => <option key={d.day} value={d.day}>{d.day}</option>)}
+                    </select>
+                    <button
+                      className="uber-btn font-bold py-2 px-4 rounded mr-2"
+                      onClick={handleSwapDays}
+                      disabled={!swapDayA || !swapDayB || swapDayA === swapDayB}
+                    >
+                      Swap
+                    </button>
+                    <button
+                      className="bg-gray-700 hover:bg-gray-900 text-white font-bold py-2 px-4 rounded"
+                      onClick={closeSwapModal}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Daily Workout Navigation */}
+            <div className="uber-card rounded-xl p-4 mb-8 uber-shadow text-white text-center">
+              <div className="flex items-center justify-between mb-4 gap-x-4">
+                <button
+                  onClick={goToPreviousDay}
+                  className="uber-btn font-bold py-2 px-4 rounded-full uber-shadow transition duration-300 ease-in-out transform hover:scale-105"
+                >
+                  &lt; Prev Day
+                </button>
+                <h2 className="text-xl sm:text-2xl font-extrabold uber-accent-text">Workouts for {selectedDayName}</h2>
+                <button
+                  onClick={goToNextDay}
+                  className="uber-btn font-bold py-2 px-4 rounded-full uber-shadow transition duration-300 ease-in-out transform hover:scale-105"
+                >
+                  Next Day &gt;
+                </button>
+              </div>
+              <button
+                onClick={goToToday}
+                className="mt-3 uber-btn font-bold py-2 px-6 rounded-full uber-shadow transition duration-300 ease-in-out transform hover:scale-105"
+              >
+                Go to Today
+              </button>
+            </div>
+
+            {/* Display Workouts for the Selected Day */}
+            {workoutsForToday.length > 0 ? (
+              workoutsForToday.map((section, sectionIndex) => (
+                <div key={sectionIndex} className="uber-card rounded-xl p-5 sm:p-6 mb-8 uber-shadow">
+                  <h2 className="text-2xl sm:text-3xl font-extrabold mb-4 uber-accent-text">{section.category}</h2>
+                  <h3 className="text-xl sm:text-2xl font-extrabold mb-3 text-blue-400">{section.dayName}</h3>
+                  <ul className="space-y-3">
+                    {section.exercises.map((exercise) => (
+                      <li key={exercise.id} className={`flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-md p-3 uber-shadow hover:bg-opacity-10 transition-colors ${areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'border-l-4 uber-border' : ''}`}>
+                        <div className="flex items-center flex-grow mb-2 sm:mb-0">
+                          <span className={`text-lg sm:text-xl font-medium ${areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'line-through text-gray-500' : 'text-white'}`}>
+                            {exercise.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center flex-wrap gap-2 sm:ml-4">
+                          {exercise.sets.map((set, setIndex) => (
+                            <div key={setIndex} className="flex items-center uber-accent text-black text-sm font-bold py-2 px-3 rounded-md uber-shadow transition duration-200 ease-in-out">
+                              <div className="flex flex-col items-center">
+                                <label htmlFor={`${exercise.id}-set-${setIndex}-${selectedWeekId}-weight`} className="sr-only">Weight for Set {setIndex + 1}</label>
+                                <input
+                                  type="number"
+                                  id={`${exercise.id}-set-${setIndex}-${selectedWeekId}-weight`}
+                                  placeholder="Weight"
+                                  value={(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].weight) || ''}
+                                  onChange={(e) => handleSetDataChange(exercise.id, setIndex, 'weight', e.target.value)}
+                                  className="w-20 p-1 rounded-md uber-input text-center mb-1"
+                                  min="0"
+                                />
+                                {previousWeekStatus[exercise.id] && previousWeekStatus[exercise.id][`set-${setIndex}`] && (
+                                  <span className="text-xs text-gray-400 mt-1">
+                                    Prev: {previousWeekStatus[exercise.id][`set-${setIndex}`].weight || '—'} kg, 
+                                    {previousWeekStatus[exercise.id][`set-${setIndex}`].reps || set.reps} reps
+                                  </span>
+                                )}
+                                <span className="mb-1 uber-label">Set {setIndex + 1} ({set.reps})</span>
+                                <button
+                                    onClick={() => handleConfirmSet(exercise.id, setIndex)}
+                                    className={`py-1 px-3 rounded-full text-xs font-bold transition duration-200 ease-in-out
+                                        ${(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].completed)
+                                            ? 'uber-btn'
+                                            : 'bg-gray-700 hover:bg-gray-900 text-white'
+                                        }`}
+                                >
+                                    {(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].completed) ? 'Completed' : 'Confirm Set'}
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                          {exercise.videoUrl && (
+                            <a
+                              href={exercise.videoUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="ml-2 p-2 rounded-full uber-accent text-black uber-shadow transition duration-200 ease-in-out transform hover:scale-110"
+                              aria-label={`Watch video for ${exercise.name}`}
+                            >
+                              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd"></path>
+                              </svg>
+                            </a>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))
+            ) : (
+              <div className="uber-card rounded-xl p-5 sm:p-6 mb-8 uber-shadow text-white text-center">
+                <p className="text-lg">No specific workouts scheduled for {selectedDayName} in this week.</p>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className="text-center text-gray-500 text-sm mt-8">
+              <p>&copy; 2025 Fitness Tracker. All rights reserved.</p>
+            </div>
+          </div>
+        };
+
         // Render the React app
         const container = document.getElementById('root');
         const root = createRoot(container);
