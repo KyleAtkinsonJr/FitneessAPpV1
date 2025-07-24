@@ -443,198 +443,196 @@
 
           // --- UI ---
           return (
-            <div className="min-h-screen font-inter p-4 sm:p-6 md:p-8" style={{background: "var(--bg-primary)", color: "var(--text-primary)"}}>
-              <div className="max-w-4xl mx-auto">
-                {/* Big Bold Header */}
-                <h1 className="text-5xl font-extrabold text-center mb-8" style={{color: "var(--electric-blue)", letterSpacing: "0.03em"}}>
-                  <span className="inline-block bounce-slow">🏋️‍♀️</span> Fitness Energy
-                </h1>
-
-                {/* Motivational Quote */}
-                <div className="rounded-2xl p-6 mb-8 shadow-xl flex flex-col sm:flex-row items-center justify-between" style={{background: "var(--card-gradient)", color: "#fff", borderRadius: "var(--card-radius)"}}>
-                  <div>
-                    <h2 className="text-2xl font-extrabold mb-2">Keep It Up!</h2>
-                    <p className="text-lg font-bold">{dailyQuote}</p>
-                  </div>
-                  <span className="mt-4 sm:mt-0 px-4 py-2 rounded-full font-bold" style={{background: "var(--badge-green)", color: "#fff"}}>🔥 Streak: 5 days</span>
-                </div>
-
-                {/* Progress Overview */}
-                <div className="rounded-2xl p-6 mb-8 shadow-xl" style={{background: "#fff", borderRadius: "var(--card-radius)"}}>
-                  <h2 className="text-xl font-extrabold mb-4" style={{color: "var(--electric-blue)"}}>Progress Overview</h2>
-                  <div className="flex flex-col sm:flex-row items-center gap-6">
-                    <div className="flex flex-col items-center">
-                      <span className="text-3xl font-extrabold" style={{color: "var(--coral)"}}>72%</span>
-                      <span className="text-sm" style={{color: "var(--muted)"}}>Week Complete</span>
+            <React.Fragment>
+              <div className="min-h-screen font-inter p-4 sm:p-6 md:p-8" style={{background: "var(--bg-primary)", color: "var(--text-primary)"}}>
+                <div className="max-w-4xl mx-auto">
+                  {/* Big Bold Header */}
+                  <h1 className="text-5xl font-extrabold text-center mb-8" style={{color: "var(--electric-blue)", letterSpacing: "0.03em"}}>
+                    <span className="inline-block bounce-slow">🏋️‍♀️</span> Fitness Energy
+                  </h1>
+                  {/* Motivational Quote */}
+                  <div className="rounded-2xl p-6 mb-8 shadow-xl flex flex-col sm:flex-row items-center justify-between" style={{background: "var(--card-gradient)", color: "#fff", borderRadius: "var(--card-radius)"}}>
+                    <div>
+                      <h2 className="text-2xl font-extrabold mb-2">Keep It Up!</h2>
+                      <p className="text-lg font-bold">{dailyQuote}</p>
                     </div>
-                    <div className="flex flex-col items-center">
-                      <span className="text-3xl font-extrabold" style={{color: "var(--yellow)"}}>4</span>
-                      <span className="text-sm" style={{color: "var(--muted)"}}>Workouts Left</span>
-                    </div>
-                    <div className="flex flex-col items-center">
-                      <span className="text-3xl font-extrabold" style={{color: "var(--badge-blue)"}}>8,200</span>
-                      <span className="text-sm" style={{color: "var(--muted)"}}>Calories Burned</span>
-                    </div>
+                    <span className="mt-4 sm:mt-0 px-4 py-2 rounded-full font-bold" style={{background: "var(--badge-green)", color: "#fff"}}>🔥 Streak: 5 days</span>
                   </div>
-                  {/* Simple progress bar */}
-                  <div className="w-full h-3 rounded-full mt-6" style={{background: "var(--gray)"}}>
-                    <div className="h-3 rounded-full" style={{width: "72%", background: "var(--electric-blue)", transition: "width 0.5s"}}></div>
-                  </div>
-                </div>
-
-                {/* Today's Workout - Details & Summary */}
-                <div className="rounded-2xl p-6 mb-8 shadow-xl" style={{background: "var(--card-gradient)", color: "#fff", borderRadius: "var(--card-radius)", position: "relative"}}>
-                  <h2 className="text-2xl font-extrabold mb-4">Today’s Workout</h2>
-                  {/* Summary of sets completed */}
-                  <div className="mb-4">
-                    <span className="text-lg font-semibold">Completed {daySummary.completed} of {daySummary.total} sets</span>
-                    <div className="w-full h-2 rounded-full mt-2" style={{background: "rgba(255,255,255,0.3)"}}>
-                      <div
-                        className="h-2 rounded-full"
-                        style={{width: `${daySummary.total === 0 ? 0 : (daySummary.completed / daySummary.total) * 100}%`, background: "var(--badge-green)", transition: "width 0.5s"}}
-                      ></div>
-                    </div>
-                  </div>
-                  {workoutsForToday.length > 0 ? (
-                    workoutsForToday.map((section, sectionIndex) => (
-                      <div key={sectionIndex} className="rounded-xl p-5 mb-8 shadow-xl" style={{background: "rgba(255,255,255,0.15)", borderRadius: "1rem"}}>
-                        <h3 className="text-xl font-extrabold mb-3" style={{color: "var(--yellow)"}}>{section.dayName}</h3>
-                        <ul className="space-y-6">
-                          {section.exercises.map((exercise) => (
-                            <li
-                              key={exercise.id}
-                              className="flex flex-col rounded-lg p-4 shadow-sm hover:bg-white hover:bg-opacity-20 transition-colors border-l-4"
-                              style={{
-                                background: "rgba(255,255,255,0.10)",
-                                borderColor: areAllSetsCompleted(exercise.id, exercise.sets.length) ? "var(--badge-green)" : "var(--electric-blue)"
-                              }}
-                            >
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between">
-                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2 sm:mb-0">
-                                  <span
-                                    className={`text-lg font-semibold flex items-center gap-2 ${areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'line-through text-gray-200' : 'text-white'}`}
-                                  >
-                                    {exercise.name}
-                                    {areAllSetsCompleted(exercise.id, exercise.sets.length) && (
-                                      <span className="ml-2 px-2 py-1 rounded-full pulse" style={{background: "var(--badge-green)", color: "#fff", fontSize: "0.8rem"}}>Done!</span>
-                                    )}
-                                  </span>
-                                </div>
-                                {/* Complete exercise button */}
-                                <button
-                                  onClick={() => completeExercise(exercise.id, exercise.sets.length)}
-                                  className="mt-2 sm:mt-0 py-1 px-3 rounded-full text-xs font-bold transition duration-200 ease-in-out"
-                                  style={{background: areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'var(--badge-green)' : 'var(--electric-blue)', color: '#fff'}}
-                                >
-                                  {areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'All Done' : 'Complete Exercise'}
-                                </button>
-                              </div>
-                              <div className="flex flex-wrap gap-3 mt-3">
-                                {exercise.sets.map((set, setIndex) => (
-                                  <div
-                                    key={setIndex}
-                                    className="flex flex-col items-center rounded-md shadow transition duration-200 ease-in-out hover:scale-105 hover:shadow-lg p-2"
-                                    style={{background: "#fff", color: "var(--text-primary)", border: "1px solid var(--border-input)"}}
-                                  >
-                                    <label htmlFor={`${exercise.id}-set-${setIndex}-${selectedWeekId}-weight`} className="sr-only">
-                                      Weight for Set {setIndex + 1}
-                                    </label>
-                                    <input
-                                      type="number"
-                                      id={`${exercise.id}-set-${setIndex}-${selectedWeekId}-weight`}
-                                      placeholder="Weight"
-                                      value={(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].weight) || ''}
-                                      onChange={(e) => handleSetDataChange(exercise.id, setIndex, 'weight', e.target.value)}
-                                      className="w-20 p-1 rounded-md text-center mb-1 transition duration-200"
-                                      style={{
-                                        background: "var(--gray)",
-                                        color: "var(--text-primary)",
-                                        border: "1px solid var(--border-input)"
-                                      }}
-                                      min="0"
-                                    />
-                                    {/* Previous week metrics */}
-                                    {previousWeekStatus[exercise.id] && previousWeekStatus[exercise.id][`set-${setIndex}`] && (
-                                      <span className="text-xs mt-1" style={{color: "var(--muted)", fontStyle: "italic"}}>
-                                        Last week: <span style={{fontWeight: "bold"}}>{previousWeekStatus[exercise.id][`set-${setIndex}`].weight || '—'} kg</span>, <span style={{fontWeight: "bold"}}>{previousWeekStatus[exercise.id][`set-${setIndex}`].reps || set.reps} reps</span>
-                                      </span>
-                                    )}
-                                    <span className="text-xs" style={{color: "var(--muted)"}}>Set {setIndex + 1} ({set.reps})</span>
-                                    <span
-                                      className="mt-1 px-2 py-1 rounded-full font-bold text-xs"
-                                      style={{
-                                        background: parseInt(set.reps) >= 15 ? "var(--badge-red)" : parseInt(set.reps) >= 10 ? "var(--badge-yellow)" : "var(--badge-blue)",
-                                        color: "#fff"
-                                      }}
-                                    >
-                                      {parseInt(set.reps) >= 15 ? "High" : parseInt(set.reps) >= 10 ? "Moderate" : "Low"}
-                                    </span>
-                                    <button
-                                      onClick={() => handleConfirmSet(exercise.id, setIndex)}
-                                      className="mt-1 py-1 px-3 rounded-full text-xs font-bold transition duration-200 ease-in-out"
-                                      style={{
-                                        background: workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].completed
-                                          ? "var(--badge-green)"
-                                          : "var(--electric-blue)",
-                                        color: "#fff"
-                                      }}
-                                    >
-                                      {workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].completed ? 'Completed' : 'Confirm Set'}
-                                    </button>
-                                  </div>
-                                ))}
-                                {exercise.videoUrl && (
-                                  <a
-                                    href={exercise.videoUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="p-2 rounded-full shadow-md transition duration-200 ease-in-out transform hover:scale-110 flex items-center justify-center"
-                                    style={{background: "var(--electric-blue)", color: "#fff"}}
-                                    aria-label={`Watch video for ${exercise.name}`}
-                                  >
-                                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                      <path
-                                        fillRule="evenodd"
-                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-                                        clipRule="evenodd"
-                                      ></path>
-                                    </svg>
-                                  </a>
-                                )}
-                              </div>
-                              {/* Note input */}
-                              <div className="mt-4">
-                                <label htmlFor={`${exercise.id}-note`} className="block text-xs font-medium mb-1" style={{color: "var(--muted)"}}>
-                                  Notes (e.g., how you felt, adjustments made)
-                                </label>
-                                <textarea
-                                  id={`${exercise.id}-note`}
-                                  rows="2"
-                                  className="w-full p-2 rounded-md border text-sm"
-                                  style={{background: "#fff", color: "var(--text-primary)", borderColor: "var(--border-input)"}}
-                                  placeholder="Add notes here..."
-                                  value={(workoutStatus[exercise.id] && workoutStatus[exercise.id].note) || ''}
-                                  onChange={(e) => handleNoteChange(exercise.id, e.target.value)}
-                                ></textarea>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
+                  {/* Progress Overview */}
+                  <div className="rounded-2xl p-6 mb-8 shadow-xl" style={{background: "#fff", borderRadius: "var(--card-radius)"}}>
+                    <h2 className="text-xl font-extrabold mb-4" style={{color: "var(--electric-blue)"}}>Progress Overview</h2>
+                    <div className="flex flex-col sm:flex-row items-center gap-6">
+                      <div className="flex flex-col items-center">
+                        <span className="text-3xl font-extrabold" style={{color: "var(--coral)"}}>72%</span>
+                        <span className="text-sm" style={{color: "var(--muted)"}}>Week Complete</span>
                       </div>
-                    ))
-                  ) : (
-                    <div className="rounded-xl p-5 mb-8 shadow-xl text-center" style={{background: "#fff", border: "1px solid var(--border-input)"}}>
-                      <p className="text-lg" style={{color: "var(--muted)"}}>No specific workouts scheduled for {selectedDayName} in this week.</p>
+                      <div className="flex flex-col items-center">
+                        <span className="text-3xl font-extrabold" style={{color: "var(--yellow)"}}>4</span>
+                        <span className="text-sm" style={{color: "var(--muted)"}}>Workouts Left</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <span className="text-3xl font-extrabold" style={{color: "var(--badge-blue)"}}>8,200</span>
+                        <span className="text-sm" style={{color: "var(--muted)"}}>Calories Burned</span>
+                      </div>
                     </div>
-                  )}
-
-                {/* Footer */}
-                <div className="text-center text-sm mt-8" style={{color: "var(--muted)"}}>
-                  <p>&copy; 2025 Fitness Energy. All rights reserved.</p>
+                    {/* Simple progress bar */}
+                    <div className="w-full h-3 rounded-full mt-6" style={{background: "var(--gray)"}}>
+                      <div className="h-3 rounded-full" style={{width: "72%", background: "var(--electric-blue)", transition: "width 0.5s"}}></div>
+                    </div>
+                  </div>
+                  {/* Today's Workout - Details & Summary */}
+                  <div className="rounded-2xl p-6 mb-8 shadow-xl" style={{background: "var(--card-gradient)", color: "#fff", borderRadius: "var(--card-radius)", position: "relative"}}>
+                    <h2 className="text-2xl font-extrabold mb-4">Today’s Workout</h2>
+                    {/* Summary of sets completed */}
+                    <div className="mb-4">
+                      <span className="text-lg font-semibold">Completed {daySummary.completed} of {daySummary.total} sets</span>
+                      <div className="w-full h-2 rounded-full mt-2" style={{background: "rgba(255,255,255,0.3)"}}>
+                        <div
+                          className="h-2 rounded-full"
+                          style={{width: `${daySummary.total === 0 ? 0 : (daySummary.completed / daySummary.total) * 100}%`, background: "var(--badge-green)", transition: "width 0.5s"}}
+                        ></div>
+                      </div>
+                    </div>
+                    {workoutsForToday.length > 0 ? (
+                      workoutsForToday.map((section, sectionIndex) => (
+                        <div key={sectionIndex} className="rounded-xl p-5 mb-8 shadow-xl" style={{background: "rgba(255,255,255,0.15)", borderRadius: "1rem"}}>
+                          <h3 className="text-xl font-extrabold mb-3" style={{color: "var(--yellow)"}}>{section.dayName}</h3>
+                          <ul className="space-y-6">
+                            {section.exercises.map((exercise) => (
+                              <li
+                                key={exercise.id}
+                                className="flex flex-col rounded-lg p-4 shadow-sm hover:bg-white hover:bg-opacity-20 transition-colors border-l-4"
+                                style={{
+                                  background: "rgba(255,255,255,0.10)",
+                                  borderColor: areAllSetsCompleted(exercise.id, exercise.sets.length) ? "var(--badge-green)" : "var(--electric-blue)"
+                                }}
+                              >
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between">
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2 sm:mb-0">
+                                    <span
+                                      className={`text-lg font-semibold flex items-center gap-2 ${areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'line-through text-gray-200' : 'text-white'}`}
+                                    >
+                                      {exercise.name}
+                                      {areAllSetsCompleted(exercise.id, exercise.sets.length) && (
+                                        <span className="ml-2 px-2 py-1 rounded-full pulse" style={{background: "var(--badge-green)", color: "#fff", fontSize: "0.8rem"}}>Done!</span>
+                                      )}
+                                    </span>
+                                  </div>
+                                  {/* Complete exercise button */}
+                                  <button
+                                    onClick={() => handleConfirmSet(exercise.id, exercise.sets.length)}
+                                    className="mt-2 sm:mt-0 py-1 px-3 rounded-full text-xs font-bold transition duration-200 ease-in-out"
+                                    style={{background: areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'var(--badge-green)' : 'var(--electric-blue)', color: '#fff'}}
+                                  >
+                                    {areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'All Done' : 'Complete Exercise'}
+                                  </button>
+                                </div>
+                                <div className="flex flex-wrap gap-3 mt-3">
+                                  {exercise.sets.map((set, setIndex) => (
+                                    <div
+                                      key={setIndex}
+                                      className="flex flex-col items-center rounded-md shadow transition duration-200 ease-in-out hover:scale-105 hover:shadow-lg p-2"
+                                      style={{background: "#fff", color: "var(--text-primary)", border: "1px solid var(--border-input)"}}
+                                    >
+                                      <label htmlFor={`${exercise.id}-set-${setIndex}-${selectedWeekId}-weight`} className="sr-only">
+                                        Weight for Set {setIndex + 1}
+                                      </label>
+                                      <input
+                                        type="number"
+                                        id={`${exercise.id}-set-${setIndex}-${selectedWeekId}-weight`}
+                                        placeholder="Weight"
+                                        value={(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].weight) || ''}
+                                        onChange={(e) => handleSetDataChange(exercise.id, setIndex, 'weight', e.target.value)}
+                                        className="w-20 p-1 rounded-md text-center mb-1 transition duration-200"
+                                        style={{
+                                          background: "var(--gray)",
+                                          color: "var(--text-primary)",
+                                          border: "1px solid var(--border-input)"
+                                        }}
+                                        min="0"
+                                      />
+                                      {/* Previous week metrics */}
+                                      {previousWeekStatus[exercise.id] && previousWeekStatus[exercise.id][`set-${setIndex}`] && (
+                                        <span className="text-xs mt-1" style={{color: "var(--muted)", fontStyle: "italic"}}>
+                                          Last week: <span style={{fontWeight: "bold"}}>{previousWeekStatus[exercise.id][`set-${setIndex}`].weight || '—'} kg</span>, <span style={{fontWeight: "bold"}}>{previousWeekStatus[exercise.id][`set-${setIndex}`].reps || set.reps} reps</span>
+                                        </span>
+                                      )}
+                                      <span className="text-xs" style={{color: "var(--muted)"}}>Set {setIndex + 1} ({set.reps})</span>
+                                      <span
+                                        className="mt-1 px-2 py-1 rounded-full font-bold text-xs"
+                                        style={{
+                                          background: parseInt(set.reps) >= 15 ? "var(--badge-red)" : parseInt(set.reps) >= 10 ? "var(--badge-yellow)" : "var(--badge-blue)",
+                                          color: "#fff"
+                                        }}
+                                      >
+                                        {parseInt(set.reps) >= 15 ? "High" : parseInt(set.reps) >= 10 ? "Moderate" : "Low"}
+                                      </span>
+                                      <button
+                                        onClick={() => handleConfirmSet(exercise.id, setIndex)}
+                                        className="mt-1 py-1 px-3 rounded-full text-xs font-bold transition duration-200 ease-in-out"
+                                        style={{
+                                          background: workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].completed
+                                            ? "var(--badge-green)"
+                                            : "var(--electric-blue)",
+                                          color: "#fff"
+                                        }}
+                                      >
+                                        {workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].completed ? 'Completed' : 'Confirm Set'}
+                                      </button>
+                                    </div>
+                                  ))}
+                                  {exercise.videoUrl && (
+                                    <a
+                                      href={exercise.videoUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="p-2 rounded-full shadow-md transition duration-200 ease-in-out transform hover:scale-110 flex items-center justify-center"
+                                      style={{background: "var(--electric-blue)", color: "#fff"}}
+                                      aria-label={`Watch video for ${exercise.name}`}
+                                    >
+                                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                        <path
+                                          fillRule="evenodd"
+                                          d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+                                          clipRule="evenodd"
+                                        ></path>
+                                      </svg>
+                                    </a>
+                                  )}
+                                </div>
+                                {/* Note input */}
+                                <div className="mt-4">
+                                  <label htmlFor={`${exercise.id}-note`} className="block text-xs font-medium mb-1" style={{color: "var(--muted)"}}>
+                                    Notes (e.g., how you felt, adjustments made)
+                                  </label>
+                                  <textarea
+                                    id={`${exercise.id}-note`}
+                                    rows="2"
+                                    className="w-full p-2 rounded-md border text-sm"
+                                    style={{background: "#fff", color: "var(--text-primary)", borderColor: "var(--border-input)"}}
+                                    placeholder="Add notes here..."
+                                    value={(workoutStatus[exercise.id] && workoutStatus[exercise.id].note) || ''}
+                                    onChange={(e) => handleNoteChange(exercise.id, e.target.value)}
+                                  ></textarea>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="rounded-xl p-5 mb-8 shadow-xl text-center" style={{background: "#fff", border: "1px solid var(--border-input)"}}>
+                        <p className="text-lg" style={{color: "var(--muted)"}}>No specific workouts scheduled for {selectedDayName} in this week.</p>
+                      </div>
+                    )}
+                    {/* Footer */}
+                    <div className="text-center text-sm mt-8" style={{color: "var(--muted)"}}>
+                      <p>&copy; 2025 Fitness Energy. All rights reserved.</p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          );
+            </React.Fragment>
         };
         // Render the React app
         const container = document.getElementById('root');
