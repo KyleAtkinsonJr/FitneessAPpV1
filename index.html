@@ -584,7 +584,8 @@
                                     />
                                     {previousWeekStatus[exercise.id] && previousWeekStatus[exercise.id][`set-${setIndex}`] && (
                                       <span className="text-xs text-gray-300 mt-1">
-                                        Prev: {previousWeekStatus[exercise.id][`set-${setIndex}`].weight || '—'}
+                                        Prev: {previousWeekStatus[exercise.id][`set-${setIndex}`].weight || '—'} kg, 
+                                        {previousWeekStatus[exercise.id][`set-${setIndex}`].reps || set.reps} reps
                                       </span>
                                     )}
                                     <span className="mb-1">Set {setIndex + 1} ({set.reps})</span>
@@ -654,5 +655,20 @@
         });
       }
     </script>
-</body>
-</html>
+</body>// ...inside set input rendering...
+
+</html><input
+  type="number"
+  id={`${exercise.id}-set-${setIndex}-${selectedWeekId}-weight`}
+  placeholder="Weight"
+  value={(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].weight) || ''}
+  onChange={(e) => handleSetDataChange(exercise.id, setIndex, 'weight', e.target.value)}
+  className="w-20 p-1 rounded-md text-gray-900 bg-white bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-300 text-center mb-1"
+  min="0"
+/>
+{previousWeekStatus[exercise.id] && previousWeekStatus[exercise.id][`set-${setIndex}`] && (
+  <span className="text-xs text-gray-300 mt-1">
+    Prev: {previousWeekStatus[exercise.id][`set-${setIndex}`].weight || '—'} kg, 
+    {previousWeekStatus[exercise.id][`set-${setIndex}`].reps || set.reps} reps
+  </span>
+)}
