@@ -11,14 +11,13 @@
 <body class="bg-gray-100 text-gray-900 font-sans">
   <div id="root" class="max-w-2xl mx-auto p-4"></div>
 
-  <!-- React, ReactDOM (development-only for `createRoot`) -->
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <script type="text/babel">
     const { useState, useEffect } = React;
-    const { createRoot } = ReactDOM;
+    const createRoot = ReactDOM.createRoot; // FIX: Correctly access createRoot
 
     const MOTIVATION_QUOTES = [
       "The only bad workout is the one that didn't happen.",
@@ -45,8 +44,22 @@
 
     const App = () => {
       const [quote, setQuote] = useState('');
-      const [data, setData] = useState(() => JSON.parse(localStorage.getItem(currentWeekKey) || '{}'));
-      const [prevData, setPrevData] = useState(() => JSON.parse(localStorage.getItem(previousWeekKey) || '{}'));
+      const [data, setData] = useState(() => {
+        try {
+          return JSON.parse(localStorage.getItem(currentWeekKey) || '{}');
+        } catch (e) {
+          console.error("Error parsing current week data from localStorage:", e);
+          return {};
+        }
+      });
+      const [prevData, setPrevData] = useState(() => {
+        try {
+          return JSON.parse(localStorage.getItem(previousWeekKey) || '{}');
+        } catch (e) {
+          console.error("Error parsing previous week data from localStorage:", e);
+          return {};
+        }
+      });
 
       useEffect(() => {
         const savedDate = localStorage.getItem("quote-date");
@@ -126,7 +139,6 @@
     root.render(<App />);
   </script>
 
-  <!-- Service Worker -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
