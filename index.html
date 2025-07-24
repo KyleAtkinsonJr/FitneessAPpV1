@@ -7,6 +7,10 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="data:," />
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js for data visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Chart.js Annotation Plugin for target line -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.4.0"></script>
   <style>
     /* Custom styles for the timer and general aesthetics */
     body {
@@ -62,9 +66,11 @@
       padding: 2rem;
       border-radius: 1rem;
       box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-      max-width: 500px;
+      max-width: 700px; /* Increased max-width for charts */
       width: 90%;
       position: relative;
+      max-height: 90vh; /* Limit height for scrollability */
+      overflow-y: auto; /* Enable scrolling for content */
     }
     .modal-close-button {
       position: absolute;
@@ -75,6 +81,31 @@
       font-size: 1.5rem;
       cursor: pointer;
       color: #6b7280;
+    }
+
+    /* Rest Timer Pop-up specific styles */
+    .rest-timer-popup {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #ef4444; /* Red */
+      color: white;
+      padding: 1rem 2rem;
+      border-radius: 9999px; /* Fully rounded */
+      font-size: 2.5rem; /* Larger font */
+      font-weight: bold;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      z-index: 1100; /* Above other modals */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: fadeInOut 0.5s ease-in-out;
+    }
+
+    @keyframes fadeInOut {
+      from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+      to { opacity: 1; transform: translateX(-50%) translateY(0); }
     }
   </style>
 </head>
@@ -87,7 +118,7 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <script type="text/babel">
-    const { useState, useEffect, useCallback } = React;
+    const { useState, useEffect, useCallback, useRef } = React;
     const createRoot = ReactDOM.createRoot;
 
     // --- Utility Functions ---
@@ -104,6 +135,11 @@
       return days[date.getDay()];
     };
 
+    const getDayIndex = (dayName) => {
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      return days.indexOf(dayName);
+    };
+
     const getStartOfWeek = (date) => {
       const d = new Date(date);
       const day = d.getDay(); // 0 for Sunday, 1 for Monday
@@ -115,6 +151,10 @@
       const result = new Date(date);
       result.setDate(result.getDate() + days);
       return result;
+    };
+
+    const getDaysInMonth = (year, month) => {
+      return new Date(year, month + 1, 0).getDate();
     };
 
     // --- Constants ---
@@ -140,15 +180,14 @@
             { id: 'dumbbell-rdls', name: 'Dumbbell Romanian Deadlifts', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=JCXUYpvImJk' },
             { id: 'goblet-squats', name: 'Goblet Squats', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=MeW7lG0w-bI' },
             { id: 'cable-glute-kickbacks', name: 'Cable Glute Kickbacks', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=J3yB_d91L4Y' },
-            { id: 'optional-cardio-mon', name: 'Optional Cardio', duration: '30 min Moderate Intensity', type: 'cardio' }
+            { id: 'cardio-mon', name: 'Cardio (Moderate Intensity)', duration: '30 min', type: 'cardio' }
           ],
           'Tue': [ // Upper Body Push & Core
             { id: 'incline-pushups', name: 'Incline Push-ups', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=IODxDxX7oi4' },
             { id: 'dumbbell-shoulder-press', name: 'Dumbbell Shoulder Press', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=qEwKCR5JCKE' },
             { id: 'dumbbell-chest-press', name: 'Dumbbell Chest Press', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=VmB1G1K7QoU' },
             { id: 'tricep-extensions', name: 'Overhead Tricep Extensions (Dumbbell)', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=nRIqU_g1b5U' },
-            { id: 'plank', name: 'Plank', sets: 3, duration: '30-60 sec hold', videoUrl: 'https://www.youtube.com/watch?v=p35_S284G00' },
-            { id: 'optional-cardio-tue', name: 'Optional Cardio', duration: '30 min Moderate Intensity', type: 'cardio' }
+            { id: 'plank', name: 'Plank', sets: 3, duration: '30-60 sec hold', videoUrl: 'https://www.youtube.com/watch?v=p35_S284G00' }
           ],
           'Wed': [ // Dedicated Cardio / Active Recovery
             { id: 'elliptical-cardio', name: 'Elliptical / Brisk Walk', duration: '45-60 min Steady State', type: 'cardio' }
@@ -158,14 +197,14 @@
             { id: 'cable-pull-throughs', name: 'Cable Pull-Throughs', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=H7mYm33zWpE' },
             { id: 'leg-press', name: 'Leg Press', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=IZxyjW7MPJQ' },
             { id: 'seated-calf-raises', name: 'Seated Calf Raises', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=GA9f_R8V8cQ' },
-            { id: 'optional-cardio-thu', name: 'Optional Cardio', duration: '30 min Moderate Intensity', type: 'cardio' }
+            { id: 'cardio-thu', name: 'Cardio (Moderate Intensity)', duration: '30 min Moderate Intensity', type: 'cardio' }
           ],
           'Fri': [ // Upper Body Pull & Arms
             { id: 'lat-pulldowns', name: 'Lat Pulldowns', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=0G_s72l1e5s' },
             { id: 'dumbbell-rows', name: 'Bent-Over Dumbbell Rows', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=vT2Gf5j4_68' },
             { id: 'face-pulls', name: 'Face Pulls', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=v3P4m255-bM' },
             { id: 'bicep-curls', name: 'Bicep Curls (Dumbbell)', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=s_pW2K1zQ6g' },
-            { id: 'optional-cardio-fri', name: 'Optional Cardio', duration: '30 min Moderate Intensity', type: 'cardio' }
+            { id: 'cardio-fri', name: 'Cardio (Moderate Intensity)', duration: '30 min Moderate Intensity', type: 'cardio' }
           ],
           'Sat': [ // Full Body Circuit / Active Recovery
             { id: 'bodyweight-squats', name: 'Bodyweight Squats', sets: 3, reps: 20, videoUrl: 'https://www.youtube.com/watch?v=C_VtbuFfJ9I' },
@@ -185,14 +224,14 @@
             { id: 'sumo-squats', name: 'Dumbbell Sumo Squats', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=x7g2Yg2yQxQ' },
             { id: 'reverse-hyperextensions', name: 'Reverse Hyperextensions (Bench)', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=eYfKx9B09-0' },
             { id: 'banded-lateral-walks', name: 'Banded Lateral Walks', sets: 3, duration: '10-15 steps each side', videoUrl: 'https://www.youtube.com/watch?v=X2h2-1L-LpM' },
-            { id: 'optional-cardio-mon2', name: 'Optional Cardio', duration: '30 min Moderate Intensity', type: 'cardio' }
+            { id: 'cardio-mon2', name: 'Cardio (Moderate Intensity)', duration: '30 min Moderate Intensity', type: 'cardio' }
           ],
           'Tue': [ // Upper Body Push & Core (Variation)
             { id: 'dumbbell-incline-press', name: 'Dumbbell Incline Press', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=0k_y2YgY0gI' },
             { id: 'arnold-press', name: 'Arnold Press', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=qEwKCR5JCKE' },
             { id: 'cable-flyes', name: 'Cable Flyes', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=Z5CYoN9aVq8' },
             { id: 'ab-crunches', name: 'Ab Crunches', sets: 3, reps: 20, videoUrl: 'https://www.youtube.com/watch?v=Xyd_fa5zo6M' },
-            { id: 'optional-cardio-tue2', name: 'Optional Cardio', duration: '30 min Moderate Intensity', type: 'cardio' }
+            { id: 'cardio-tue2', name: 'Cardio (Moderate Intensity)', duration: '30 min Moderate Intensity', type: 'cardio' }
           ],
           'Wed': [ // Dedicated Cardio / HIIT
             { id: 'hiit-sprints', name: 'HIIT Sprints (Treadmill/Bike)', duration: '20-30 min Intervals', type: 'cardio' }
@@ -202,14 +241,14 @@
             { id: 'single-leg-rdls', name: 'Single-Leg RDLs (Dumbbell)', sets: 3, reps: 8, videoUrl: 'https://www.youtube.com/watch?v=ultWZbPWptQ' },
             { id: 'hyperextensions', name: 'Hyperextensions (Back Extension)', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=ph3pddpKzzw' },
             { id: 'donkey-kicks', name: 'Donkey Kicks (Banded)', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=I67-dJj1N3Q' },
-            { id: 'optional-cardio-thu2', name: 'Optional Cardio', duration: '30 min Moderate Intensity', type: 'cardio' }
+            { id: 'cardio-thu2', name: 'Cardio (Moderate Intensity)', duration: '30 min Moderate Intensity', type: 'cardio' }
           ],
           'Fri': [ // Upper Body Pull & Arms (Variation)
             { id: 'seated-cable-rows', name: 'Seated Cable Rows', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=ultWZbPWptQ' },
             { id: 'pull-aparts', name: 'Banded Face Pulls / Pull-Aparts', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=v3P4m255-bM' },
             { id: 'hammer-curls', name: 'Hammer Curls', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=ultWZbPWptQ' },
             { id: 'tricep-pushdowns', name: 'Tricep Pushdowns (Cable)', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=ultWZbPWptQ' },
-            { id: 'optional-cardio-fri2', name: 'Optional Cardio', duration: '30 min Moderate Intensity', type: 'cardio' }
+            { id: 'cardio-fri2', name: 'Cardio (Moderate Intensity)', duration: '30 min Moderate Intensity', type: 'cardio' }
           ],
           'Sat': [ // Active Recovery / Longer Cardio
             { id: 'yoga-stretch', name: 'Yoga / Stretching', duration: '30-45 min', type: 'cardio' },
@@ -218,6 +257,92 @@
           'Sun': [] // Rest day
         }
       }
+    };
+
+    // Common exercises for customization - EXPANDED LIST
+    const ALL_EXERCISES = [
+      // Strength - Lower Body (Glute Focus)
+      { id: 'barbell-hip-thrusts', name: 'Barbell Hip Thrusts', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=ultWZbPWptQ' },
+      { id: 'dumbbell-rdls', name: 'Dumbbell Romanian Deadlifts', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=JCXUYpvImJk' },
+      { id: 'goblet-squats', name: 'Goblet Squats', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=MeW7lG0w-bI' },
+      { id: 'cable-glute-kickbacks', name: 'Cable Glute Kickbacks', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=J3yB_d91L4Y' },
+      { id: 'bulgarian-split-squats', name: 'Bulgarian Split Squats (Dumbbell)', sets: 3, reps: 8, videoUrl: 'https://www.youtube.com/watch?v=2C-uNgKwMLE' },
+      { id: 'cable-pull-throughs', name: 'Cable Pull-Throughs', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=H7mYm33zWpE' },
+      { id: 'leg-press', name: 'Leg Press', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=IZxyjW7MPJQ' },
+      { id: 'seated-calf-raises', name: 'Seated Calf Raises', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=GA9f_R8V8cQ' },
+      { id: 'glute-bridges', name: 'Dumbbell Glute Bridges', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=v-g_k-8x_i4' },
+      { id: 'sumo-squats', name: 'Dumbbell Sumo Squats', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=x7g2Yg2yQxQ' },
+      { id: 'reverse-hyperextensions', name: 'Reverse Hyperextensions (Bench)', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=eYfKx9B09-0' },
+      { id: 'banded-lateral-walks', name: 'Banded Lateral Walks', sets: 3, duration: '10-15 steps each side', videoUrl: 'https://www.youtube.com/watch?v=X2h2-1L-LpM' },
+      { id: 'step-ups', name: 'Dumbbell Step-ups', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=ultWZbPWptQ' },
+      { id: 'single-leg-rdls', name: 'Single-Leg RDLs (Dumbbell)', sets: 3, reps: 8, videoUrl: 'https://www.youtube.com/watch?v=ultWZbPWptQ' },
+      { id: 'hyperextensions', name: 'Hyperextensions (Back Extension)', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=ph3pddpKzzw' },
+      { id: 'donkey-kicks', name: 'Donkey Kicks (Banded)', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=I67-dJj1N3Q' },
+      { id: 'glute-medius-kickbacks', name: 'Glute Medius Kickbacks (Cable)', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=Qh_tX1g3aXk' },
+      { id: 'banded-clam-shells', name: 'Banded Clam Shells', sets: 3, reps: 20, videoUrl: 'https://www.youtube.com/watch?v=ultWZbPWptQ' },
+      // Strength - Upper Body
+      { id: 'incline-pushups', name: 'Incline Push-ups', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=IODxDxX7oi4' },
+      { id: 'dumbbell-shoulder-press', name: 'Dumbbell Shoulder Press', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=qEwKCR5JCKE' },
+      { id: 'dumbbell-chest-press', name: 'Dumbbell Chest Press', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=VmB1G1K7QoU' },
+      { id: 'tricep-extensions', name: 'Overhead Tricep Extensions (Dumbbell)', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=nRIqU_g1b5U' },
+      { id: 'lat-pulldowns', name: 'Lat Pulldowns', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=0G_s72l1e5s' },
+      { id: 'dumbbell-rows', name: 'Bent-Over Dumbbell Rows', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=vT2Gf5j4_68' },
+      { id: 'face-pulls', name: 'Face Pulls', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=v3P4m255-bM' },
+      { id: 'bicep-curls', name: 'Bicep Curls (Dumbbell)', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=s_pW2K1zQ6g' },
+      { id: 'dumbbell-incline-press', name: 'Dumbbell Incline Press', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=0k_y2YgY0gI' },
+      { id: 'arnold-press', name: 'Arnold Press', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=qEwKCR5JCKE' },
+      { id: 'cable-flyes', name: 'Cable Flyes', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=Z5CYoN9aVq8' },
+      { id: 'seated-cable-rows', name: 'Seated Cable Rows', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=ultWZbPWptQ' },
+      { id: 'pull-aparts', name: 'Banded Face Pulls / Pull-Aparts', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=v3P4m255-bM' },
+      { id: 'hammer-curls', name: 'Hammer Curls', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=ultWZbPWptQ' },
+      { id: 'tricep-pushdowns', name: 'Tricep Pushdowns (Cable)', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=ultWZbPWptQ' },
+      { id: 'assisted-pullups', name: 'Assisted Pull-ups', sets: 3, reps: 8, videoUrl: 'https://www.youtube.com/watch?v=ultWZbPWptQ' },
+      { id: 'dumbbell-pullovers', name: 'Dumbbell Pullovers', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=ultWZbPWptQ' },
+      // Core
+      { id: 'plank', name: 'Plank', sets: 3, duration: '30-60 sec hold', videoUrl: 'https://www.youtube.com/watch?v=p35_S284G00' },
+      { id: 'ab-crunches', name: 'Ab Crunches', sets: 3, reps: 20, videoUrl: 'https://www.youtube.com/watch?v=Xyd_fa5zo6M' },
+      { id: 'russian-twists', name: 'Russian Twists', sets: 3, reps: 20, videoUrl: 'https://www.youtube.com/watch?v=ultWZbPWptQ' },
+      // Cardio
+      { id: 'elliptical-cardio', name: 'Elliptical / Brisk Walk', duration: '45-60 min Steady State', type: 'cardio' },
+      { id: 'hiit-sprints', name: 'HIIT Sprints (Treadmill/Bike)', duration: '20-30 min Intervals', type: 'cardio' },
+      { id: 'yoga-stretch', name: 'Yoga / Stretching', duration: '30-45 min', type: 'cardio' },
+      { id: 'long-walk', name: 'Long Walk', duration: '60 min', type: 'cardio' },
+      { id: 'jumping-jacks', name: 'Jumping Jacks', sets: 3, duration: '60 sec', type: 'cardio' },
+      { id: 'mountain-climbers', name: 'Mountain Climbers', sets: 3, duration: '60 sec', type: 'cardio' },
+      { id: 'cycle-cardio', name: 'Cycling (Moderate Intensity)', duration: '30 min', type: 'cardio' },
+      { id: 'dance-cardio', name: 'Dance Cardio', duration: '30 min', type: 'cardio' },
+      { id: 'spin-class', name: 'Spin Class', duration: '45-60 min', type: 'cardio' },
+      { id: 'swimming', name: 'Swimming', duration: '30-45 min', type: 'cardio' }
+    ];
+
+    // --- Chart Component ---
+    const ChartComponent = ({ type, data, options }) => {
+      const chartRef = useRef(null);
+      const chartInstance = useRef(null);
+
+      useEffect(() => {
+        if (chartInstance.current) {
+          chartInstance.current.destroy(); // Destroy existing chart before re-rendering
+        }
+
+        if (chartRef.current) {
+          const ctx = chartRef.current.getContext('2d');
+          chartInstance.current = new Chart(ctx, {
+            type: type,
+            data: data,
+            options: options,
+            plugins: ChartAnnotation.default ? [ChartAnnotation] : [] // Register the annotation plugin if available
+          });
+        }
+
+        return () => {
+          if (chartInstance.current) {
+            chartInstance.current.destroy();
+          }
+        };
+      }, [data, options, type]); // Re-render chart if data, options, or type changes
+
+      return <canvas ref={chartRef}></canvas>;
     };
 
     // --- Calendar Component ---
@@ -280,6 +405,10 @@
       const [selectedDate, setSelectedDate] = useState(today);
       const [currentWeekStart, setCurrentWeekStart] = useState(getStartOfWeek(today));
       const [showCustomizeModal, setShowCustomizeModal] = useState(false);
+      const [showProgressModal, setShowProgressModal] = useState(false);
+      const [targetMoveDay, setTargetMoveDay] = useState(''); // State for target day in move/swap, initialized empty
+      const [restTimer, setRestTimer] = useState(0); // Global rest timer state
+      const [restTimerVisible, setRestTimerVisible] = useState(false); // Visibility of the rest timer popup
 
       // State to hold the currently selected workout plan ID
       const [selectedPlanId, setSelectedPlanId] = useState(() => {
@@ -291,7 +420,7 @@
         }
       });
 
-      // Data structure: { "YYYY-MM-DD": { "exerciseId": { "set-0": { weight: 70, completed: true, timer: 0 } } } }
+      // Data structure: { "YYYY-MM-DD": { "steps": 8500, "exercises": [...], "exerciseId": { "set-0": {...} } } }
       const [allWorkoutData, setAllWorkoutData] = useState(() => {
         try {
           return JSON.parse(localStorage.getItem('fitnessTrackerData') || '{}');
@@ -317,7 +446,7 @@
         }
       }, []);
 
-      // Function to update a set's data
+      // Function to update a set's data (for strength and cardio)
       const updateSet = useCallback((exerciseId, setIndex, field, value) => {
         const dateKey = formatDate(selectedDate);
         const updatedAllData = { ...allWorkoutData };
@@ -333,10 +462,12 @@
         if (field === 'completed') {
           currentSetData.completed = value;
           if (value) {
-            // Start timer if completed
-            currentSetData.timer = 60; // Set initial timer value
+            currentSetData.timer = 60; // Start timer
+            setRestTimer(60); // Set global timer for popup
+            setRestTimerVisible(true); // Show popup
           } else {
-            currentSetData.timer = 0; // Reset timer if unchecked
+            currentSetData.timer = 0; // Reset timer
+            setRestTimerVisible(false); // Hide popup if unchecked
           }
         } else if (field === 'weight') {
           currentSetData.weight = Number(value);
@@ -348,51 +479,51 @@
         localStorage.setItem('fitnessTrackerData', JSON.stringify(updatedAllData));
       }, [selectedDate, allWorkoutData]);
 
-      // Timer effect
-      useEffect(() => {
+      // Function to update daily steps
+      const updateSteps = useCallback((value) => {
         const dateKey = formatDate(selectedDate);
-        const currentDayData = allWorkoutData[dateKey] || {};
-        let timerIntervals = [];
+        const updatedAllData = { ...allWorkoutData };
+        if (!updatedAllData[dateKey]) updatedAllData[dateKey] = {};
+        updatedAllData[dateKey].steps = Number(value);
+        setAllWorkoutData(updatedAllData);
+        localStorage.setItem('fitnessTrackerData', JSON.stringify(updatedAllData));
+      }, [selectedDate, allWorkoutData]);
 
-        Object.keys(currentDayData).forEach(exerciseId => {
-          Object.keys(currentDayData[exerciseId]).forEach(setKey => {
-            const setIndex = parseInt(setKey.replace('set-', ''));
-            const setData = currentDayData[exerciseId][setKey];
 
-            if (setData.completed && setData.timer > 0) {
-              const interval = setInterval(() => {
-                updateSet(exerciseId, setIndex, 'timer', setData.timer - 1);
-              }, 1000);
-              timerIntervals.push(interval);
-            }
-          });
-        });
-
-        return () => {
-          timerIntervals.forEach(clearInterval);
-        };
-      }, [allWorkoutData, selectedDate, updateSet]);
+      // Timer effect for global rest timer popup
+      useEffect(() => {
+        let countdownInterval;
+        if (restTimerVisible && restTimer > 0) {
+          countdownInterval = setInterval(() => {
+            setRestTimer(prev => prev - 1);
+          }, 1000);
+        } else if (restTimer === 0) {
+          setRestTimerVisible(false); // Hide popup when timer reaches 0
+        }
+        return () => clearInterval(countdownInterval);
+      }, [restTimer, restTimerVisible]);
 
 
       // Calendar navigation handlers
       const goToPreviousWeek = () => {
         setCurrentWeekStart(prev => addDays(prev, -7));
-        setSelectedDate(prev => addDays(prev, -7)); // Also jump selected date
+        setSelectedDate(prev => addDays(getStartOfWeek(addDays(prev, -7)), 0)); // Go to Monday of previous week
       };
 
       const goToNextWeek = () => {
         setCurrentWeekStart(prev => addDays(prev, 7));
-        setSelectedDate(prev => addDays(prev, 7)); // Also jump selected date
+        setSelectedDate(prev => addDays(getStartOfWeek(addDays(prev, 7)), 0)); // Go to Monday of next week
       };
 
       const handleSelectDay = (date) => {
         setSelectedDate(date);
       };
 
-      // Get workouts for the selected day based on the active plan
+      // Get workouts for the selected day: prioritize custom, then default plan
       const selectedDayName = getDayName(selectedDate);
-      const workoutsForSelectedDay = WORKOUT_PLANS[selectedPlanId]?.schedule[selectedDayName] || [];
-      const currentDayData = allWorkoutData[formatDate(selectedDate)] || {};
+      const dateKey = formatDate(selectedDate);
+      const workoutsForSelectedDay = allWorkoutData[dateKey]?.exercises || WORKOUT_PLANS[selectedPlanId]?.schedule[selectedDayName] || [];
+      const currentDayData = allWorkoutData[dateKey] || {};
 
       // Calculate previous week's corresponding date for auto-fill
       const prevWeekDate = addDays(selectedDate, -7);
@@ -401,12 +532,238 @@
       const currentWeekNumber = getWeekNumber(currentWeekStart);
       const currentYear = currentWeekStart.getFullYear();
 
-      // Handle plan selection in modal
-      const handlePlanSelect = (planId) => {
-        setSelectedPlanId(planId);
-        localStorage.setItem('selectedFitnessPlan', planId);
-        setShowCustomizeModal(false); // Close modal after selection
+      // --- Manage Daily Workout Modal Logic ---
+      const [addExerciseSearch, setAddExerciseSearch] = useState('');
+      const [selectedExerciseToAdd, setSelectedExerciseToAdd] = useState('');
+
+      const filteredExercises = ALL_EXERCISES.filter(ex =>
+        ex.name.toLowerCase().includes(addExerciseSearch.toLowerCase()) &&
+        !workoutsForSelectedDay.some(w => w.id === ex.id) // Don't show already added exercises
+      );
+
+      const handleAddExercise = () => {
+        if (selectedExerciseToAdd) {
+          const exerciseToAdd = ALL_EXERCISES.find(ex => ex.id === selectedExerciseToAdd);
+          if (exerciseToAdd) {
+            const updatedExercises = [...workoutsForSelectedDay, exerciseToAdd];
+            const updatedAllData = { ...allWorkoutData };
+            if (!updatedAllData[dateKey]) updatedAllData[dateKey] = {};
+            updatedAllData[dateKey].exercises = updatedExercises;
+            setAllWorkoutData(updatedAllData);
+            localStorage.setItem('fitnessTrackerData', JSON.stringify(updatedAllData));
+            setSelectedExerciseToAdd('');
+            setAddExerciseSearch('');
+          }
+        }
       };
+
+      const handleRemoveExercise = (exerciseIdToRemove) => {
+        const updatedExercises = workoutsForSelectedDay.filter(ex => ex.id !== exerciseIdToRemove);
+        const updatedAllData = { ...allWorkoutData };
+        if (!updatedAllData[dateKey]) updatedAllData[dateKey] = {};
+        updatedAllData[dateKey].exercises = updatedExercises;
+        // Also remove specific exercise data (weights, completed, timers) for the removed exercise
+        if (updatedAllData[dateKey][exerciseIdToRemove]) {
+            delete updatedAllData[dateKey][exerciseIdToRemove];
+        }
+        setAllWorkoutData(updatedAllData);
+        localStorage.setItem('fitnessTrackerData', JSON.stringify(updatedAllData));
+      };
+
+      // Handle moving workout to another day
+      const handleMoveWorkout = () => {
+        const sourceDateKey = formatDate(selectedDate);
+        const targetDate = addDays(getStartOfWeek(selectedDate), getDayIndex(targetMoveDay));
+        const targetDateKey = formatDate(targetDate);
+
+        if (sourceDateKey === targetDateKey || !targetMoveDay) return; // Cannot move to the same day or no target selected
+
+        const updatedAllData = { ...allWorkoutData };
+
+        // Get data from source day
+        const sourceDayData = updatedAllData[sourceDateKey] || {};
+        const exercisesToMove = sourceDayData.exercises || [];
+        const exerciseSpecificDataToMove = {};
+        Object.keys(sourceDayData).forEach(key => {
+            if (key !== 'exercises' && key !== 'steps') { // Copy only exercise-specific data
+                exerciseSpecificDataToMove[key] = sourceDayData[key];
+            }
+        });
+        const sourceSteps = sourceDayData.steps || 0;
+
+
+        // Set data to target day
+        if (!updatedAllData[targetDateKey]) updatedAllData[targetDateKey] = {};
+        updatedAllData[targetDateKey].exercises = [...(updatedAllData[targetDateKey].exercises || []), ...exercisesToMove];
+        Object.assign(updatedAllData[targetDateKey], exerciseSpecificDataToMove); // Merge exercise data
+        updatedAllData[targetDateKey].steps = (updatedAllData[targetDateKey].steps || 0) + sourceSteps; // Add steps
+
+        // Clear data from source day
+        updatedAllData[sourceDateKey] = { steps: 0, exercises: [] }; // Clear steps, exercises and exercise data
+
+        setAllWorkoutData(updatedAllData);
+        localStorage.setItem('fitnessTrackerData', JSON.stringify(updatedAllData));
+        setShowCustomizeModal(false);
+        setSelectedDate(targetDate); // Automatically navigate to the target day
+        setTargetMoveDay(''); // Reset target day selection
+      };
+
+      // Handle swapping workouts between two days
+      const handleSwapWorkouts = () => {
+        const sourceDateKey = formatDate(selectedDate);
+        const targetDate = addDays(getStartOfWeek(selectedDate), getDayIndex(targetMoveDay));
+        const targetDateKey = formatDate(targetDate);
+
+        if (sourceDateKey === targetDateKey || !targetMoveDay) return; // Cannot swap with the same day or no target selected
+
+        const updatedAllData = { ...allWorkoutData };
+
+        // Store source day's data temporarily
+        const tempSourceExercises = updatedAllData[sourceDateKey]?.exercises || [];
+        const tempSourceExerciseData = {};
+        Object.keys(updatedAllData[sourceDateKey] || {}).forEach(key => {
+            if (key !== 'exercises' && key !== 'steps') {
+                tempSourceExerciseData[key] = updatedAllData[sourceDateKey][key];
+            }
+        });
+        const tempSourceSteps = updatedAllData[sourceDateKey]?.steps || 0;
+
+
+        // Get target day's data
+        const targetDayData = updatedAllData[targetDateKey] || {};
+        const targetExercises = targetDayData.exercises || [];
+        const targetExerciseData = {};
+        Object.keys(targetDayData).forEach(key => {
+            if (key !== 'exercises' && key !== 'steps') {
+                targetExerciseData[key] = targetDayData[key];
+            }
+        });
+        const targetSteps = targetDayData.steps || 0;
+
+        // Apply target day's data to source day
+        updatedAllData[sourceDateKey] = {
+            steps: targetSteps,
+            exercises: targetExercises,
+            ...targetExerciseData
+        };
+
+        // Apply source day's data to target day
+        updatedAllData[targetDateKey] = {
+            steps: tempSourceSteps,
+            exercises: tempSourceExercises,
+            ...tempSourceExerciseData
+        };
+
+        setAllWorkoutData(updatedAllData);
+        localStorage.setItem('fitnessTrackerData', JSON.stringify(updatedAllData));
+        setShowCustomizeModal(false);
+        setTargetMoveDay(''); // Reset target day selection
+        // No need to change selectedDate as both days are affected, user stays on current day
+      };
+
+
+      // --- Progress Chart Data Aggregation ---
+      const getChartData = useCallback(() => {
+        const weeklyTotalWeight = {}; // { 'YYYY-WW': totalWeight }
+        const dailySteps = {};       // { 'YYYY-MM-DD': steps }
+
+        const sortedDates = Object.keys(allWorkoutData).sort();
+
+        sortedDates.forEach(dateStr => {
+          const dataForDay = allWorkoutData[dateStr];
+          const date = new Date(dateStr);
+          const weekKey = `${date.getFullYear()}-${getWeekNumber(date)}`;
+
+          // Aggregate total weight lifted for the week
+          let dayTotalWeight = 0;
+          // Use the actual exercises stored for the day, or fallback to the plan
+          const exercisesForDay = dataForDay.exercises || WORKOUT_PLANS[selectedPlanId]?.schedule[getDayName(date)] || [];
+          exercisesForDay.forEach(ex => {
+            if (ex.type !== 'cardio' && ex.sets) {
+              for (let i = 0; i < ex.sets; i++) {
+                const setKey = `set-${i}`;
+                // Access data for the exercise directly from dataForDay[ex.id]
+                if (dataForDay[ex.id] && dataForDay[ex.id][setKey] && dataForDay[ex.id][setKey].completed) {
+                  dayTotalWeight += (dataForDay[ex.id][setKey].weight || 0) * (ex.reps || 1); // Weight * reps for total volume
+                }
+              }
+            }
+          });
+          weeklyTotalWeight[weekKey] = (weeklyTotalWeight[weekKey] || 0) + dayTotalWeight;
+
+          // Store daily steps
+          if (dataForDay.steps !== undefined) {
+            dailySteps[dateStr] = dataForDay.steps;
+          }
+        });
+
+        // Prepare data for Weekly Weight Chart
+        const weightLabels = Object.keys(weeklyTotalWeight).sort();
+        const weightDataset = weightLabels.map(key => weeklyTotalWeight[key]);
+        const weightChartData = {
+          labels: weightLabels,
+          datasets: [{
+            label: 'Total Weight Lifted (kg)',
+            data: weightDataset,
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.2)',
+            fill: true,
+            tension: 0.3
+          }]
+        };
+
+        // Prepare data for Steps Chart
+        const getStepsChartData = (filter) => {
+          let labels = [];
+          let data = [];
+
+          const now = new Date();
+          const currentYear = now.getFullYear();
+          const currentMonth = now.getMonth(); // 0-indexed
+
+          if (filter === 'week') {
+            const startOfWeek = getStartOfWeek(now);
+            for (let i = 0; i < 7; i++) {
+              const date = addDays(startOfWeek, i);
+              const dateStr = formatDate(date);
+              labels.push(getDayName(date) + ' ' + date.getDate());
+              data.push(dailySteps[dateStr] || 0);
+            }
+          } else if (filter === 'prev-week') {
+            const prevWeekStart = addDays(getStartOfWeek(now), -7);
+            for (let i = 0; i < 7; i++) {
+              const date = addDays(prevWeekStart, i);
+              const dateStr = formatDate(date);
+              labels.push(getDayName(date) + ' ' + date.getDate());
+              data.push(dailySteps[dateStr] || 0);
+            }
+          } else if (filter === 'month') {
+            const daysInMonth = getDaysInMonth(currentYear, currentMonth);
+            for (let i = 1; i <= daysInMonth; i++) {
+              const date = new Date(currentYear, currentMonth, i);
+              const dateStr = formatDate(date);
+              labels.push(date.getDate());
+              data.push(dailySteps[dateStr] || 0);
+            }
+          }
+
+          return {
+            labels: labels,
+            datasets: [{
+              label: 'Steps',
+              data: data,
+              backgroundColor: '#60a5fa', /* blue-400 */
+              borderColor: '#3b82f6',
+              borderWidth: 1
+            }]
+          };
+        };
+
+        return { weightChartData, getStepsChartData };
+      }, [allWorkoutData, selectedPlanId]);
+
+      const { weightChartData, getStepsChartData } = getChartData();
+      const [stepsFilter, setStepsFilter] = useState('week'); // 'week', 'prev-week', 'month'
 
       return (
         <main className="bg-white rounded-3xl shadow-2xl p-6 space-y-6 border-4 border-blue-200">
@@ -417,16 +774,24 @@
             “{quote}”
           </div>
 
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex flex-col sm:flex-row justify-between items-center mb-4 space-y-2 sm:space-y-0 sm:space-x-4">
             <h2 className="text-2xl font-bold text-gray-800">
               Week {currentWeekNumber} of {currentYear}
             </h2>
-            <button
-              onClick={() => setShowCustomizeModal(true)}
-              className="px-4 py-2 bg-purple-500 text-white rounded-full shadow-md hover:bg-purple-600 transition-colors duration-200 text-sm"
-            >
-              Customize Plan
-            </button>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setShowCustomizeModal(true)}
+                className="px-4 py-2 bg-purple-500 text-white rounded-full shadow-md hover:bg-purple-600 transition-colors duration-200 text-sm"
+              >
+                Manage Daily Workout
+              </button>
+              <button
+                onClick={() => setShowProgressModal(true)}
+                className="px-4 py-2 bg-pink-500 text-white rounded-full shadow-md hover:bg-pink-600 transition-colors duration-200 text-sm"
+              >
+                View Progress
+              </button>
+            </div>
           </div>
 
           <Calendar
@@ -444,6 +809,18 @@
             <p className="text-gray-600 text-sm mb-4">
               Current Plan: <span className="font-semibold text-blue-700">{WORKOUT_PLANS[selectedPlanId]?.name}</span>
             </p>
+
+            {/* Steps Input Field */}
+            <div className="mb-6 pb-4 border-b border-blue-100">
+              <h3 className="font-bold text-xl text-blue-800 mb-2">Daily Steps</h3>
+              <input
+                type="number"
+                className="border border-blue-300 rounded-md w-full px-3 py-2 text-gray-800 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                placeholder="Enter steps"
+                value={currentDayData.steps ?? ''}
+                onChange={(e) => updateSteps(e.target.value)}
+              />
+            </div>
 
             {workoutsForSelectedDay.length === 0 ? (
               <p className="text-gray-500 text-center py-6 text-lg bg-gray-50 rounded-lg shadow-inner">
@@ -471,140 +848,333 @@
                   </div>
 
                   {ex.sets && ex.reps && (
-                    <p className="text-gray-600 text-base mb-3">{ex.reps} reps x {ex.sets} sets</p>
+                    <p className="text-lg font-bold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-md inline-block mb-3">
+                      {ex.reps} reps x {ex.sets} sets
+                    </p>
                   )}
                   {ex.duration && (
-                    <p className="text-gray-600 text-base mb-3">Duration: {ex.duration}</p>
+                    <p className="text-lg font-bold text-green-700 bg-green-50 px-3 py-1 rounded-md inline-block mb-3">
+                      Duration: {ex.duration}
+                    </p>
                   )}
 
-                  {/* Define current and previous data for the exercise outside the conditional rendering of sets/cardio */}
-                  {/* This ensures 'currentExData' and 'previousExData' are always defined for the exercise block */}
+                  {/* Render sets/duration based on type */}
                   {(() => {
                     const currentExData = currentDayData[ex.id] || {};
                     const previousExData = prevWeekData[ex.id] || {};
 
-                    if (ex.type === 'cardio') {
-                      const currentSet = currentExData['set-0'] || {};
-                      return (
-                        <div className="border border-green-200 p-4 rounded-lg space-y-2 text-sm bg-green-50 shadow-sm">
-                          <label className="inline-flex items-center text-gray-700 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              className="form-checkbox h-5 w-5 text-green-600 rounded focus:ring-green-500 mr-2"
-                              checked={currentSet.completed || false}
-                              onChange={(e) => updateSet(ex.id, 0, 'completed', e.target.checked)}
-                            />
-                            Completed Cardio
-                          </label>
-                          {currentSet.completed && currentSet.timer > 0 && (
-                            <div className="timer-container">
-                              <div className="timer-circle"></div>
-                              <span>Rest: {currentSet.timer}s</span>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    } else if (ex.sets) {
+                    // For cardio, we still use set-0 for its completion status and timer
+                    const numSets = ex.sets || (ex.type === 'cardio' ? 1 : 0);
+
+                    if (numSets > 0) {
                       return (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
-                          {Array.from({ length: ex.sets }).map((_, i) => {
+                          {Array.from({ length: numSets }).map((_, i) => {
                             const currentSet = currentExData[`set-${i}`] || {};
                             const previousSet = previousExData[`set-${i}`] || {};
 
-                            // Auto-fill weight if current is empty and previous exists
-                            const initialWeight = currentSet.weight ?? (previousSet.weight || '');
+                            // Auto-fill weight if current is empty and previous exists, only for non-cardio
+                            const initialWeight = ex.type !== 'cardio' ? (currentSet.weight ?? (previousSet.weight || '')) : '';
 
-                            // Determine weight comparison icon
+                            // Determine weight comparison icon (only for non-cardio)
                             let weightComparisonIcon = null;
-                            if (currentSet.weight !== undefined && previousSet.weight !== undefined && previousSet.weight !== '') {
-                              if (currentSet.weight > previousSet.weight) {
+                            if (ex.type !== 'cardio' && currentSet.weight !== undefined && currentSet.weight !== '' && !isNaN(Number(currentSet.weight)) && previousSet.weight !== undefined && previousSet.weight !== '') {
+                              const currentWeightNum = Number(currentSet.weight);
+                              const previousWeightNum = Number(previousSet.weight);
+                              if (currentWeightNum > previousWeightNum) {
                                 weightComparisonIcon = <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 arrow-icon arrow-up" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>;
-                              } else if (currentSet.weight < previousSet.weight) {
+                              } else if (currentWeightNum < previousWeightNum) {
                                 weightComparisonIcon = <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 arrow-icon arrow-down" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>;
                               } else {
                                 weightComparisonIcon = <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 arrow-icon arrow-same" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" /></svg>;
                               }
                             }
 
+                            // Disable checkbox and input if previous set is not completed (for sets > 0)
+                            const isSetDisabled = i > 0 && !(currentExData[`set-${i-1}`]?.completed);
+
                             return (
-                              <div key={i} className="border border-blue-200 p-4 rounded-lg space-y-2 text-sm bg-blue-50 shadow-sm">
-                                <label className="block font-medium text-blue-700">Set {i + 1}</label>
-                                <input
-                                  type="number"
-                                  className="border border-blue-300 rounded-md w-full px-3 py-2 text-gray-800 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                                  placeholder="Weight (kg)"
-                                  value={initialWeight}
-                                  onChange={(e) => updateSet(ex.id, i, 'weight', e.target.value)}
-                                />
+                              <div key={i} className={`border p-4 rounded-lg space-y-2 text-sm shadow-sm
+                                ${ex.type === 'cardio' ? 'border-green-200 bg-green-50' : 'border-blue-200 bg-blue-50'}`}>
+                                <label className={`block font-medium ${ex.type === 'cardio' ? 'text-green-700' : 'text-blue-700'}`}>
+                                  {ex.type === 'cardio' ? 'Completed' : `Set ${i + 1}`}
+                                </label>
+                                {ex.type !== 'cardio' && (
+                                  <input
+                                    type="number"
+                                    className="border border-blue-300 rounded-md w-full px-3 py-2 text-gray-800 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                    placeholder="Weight (kg)"
+                                    value={initialWeight}
+                                    onChange={(e) => updateSet(ex.id, i, 'weight', e.target.value)}
+                                    disabled={isSetDisabled} /* Disable weight input too */
+                                  />
+                                )}
+                                {/* Display previous week's weight more prominently */}
+                                {ex.type !== 'cardio' && previousSet.weight !== undefined && previousSet.weight !== '' && (
+                                  <p className="text-sm text-gray-600 mt-1 flex items-center">
+                                    <span className="font-semibold">Prev:</span> {previousSet.weight}kg {weightComparisonIcon}
+                                  </p>
+                                )}
                                 <label className="inline-flex items-center text-gray-700 cursor-pointer">
                                   <input
                                     type="checkbox"
-                                    className="form-checkbox h-5 w-5 text-green-600 rounded focus:ring-green-500 mr-2"
+                                    className={`form-checkbox h-5 w-5 ${ex.type === 'cardio' ? 'text-green-600' : 'text-blue-600'} rounded focus:ring-current mr-2`}
                                     checked={currentSet.completed || false}
                                     onChange={(e) => updateSet(ex.id, i, 'completed', e.target.checked)}
+                                    disabled={isSetDisabled}
                                   />
                                   Completed
                                 </label>
-                                {previousSet.weight !== undefined && previousSet.weight !== '' && (
-                                  <p className="text-xs text-gray-500 mt-1 flex items-center">
-                                    Prev: {previousSet.weight}kg {weightComparisonIcon}
-                                  </p>
-                                )}
-                                {currentSet.completed && currentSet.timer > 0 && (
-                                  <div className="timer-container">
-                                    <div className="timer-circle"></div>
-                                    <span>Rest: {currentSet.timer}s</span>
-                                  </div>
-                                )}
                               </div>
                             );
                           })}
                         </div>
                       );
                     }
-                    return null; // Return null if no sets or not cardio
+                    return null;
                   })()}
                 </div>
               ))
             )}
           </section>
 
+          {/* Manage Daily Workout Modal */}
           {showCustomizeModal && (
             <div className="modal-overlay">
               <div className="modal-content">
                 <button onClick={() => setShowCustomizeModal(false)} className="modal-close-button">
                   &times;
                 </button>
-                <h3 className="text-2xl font-bold text-blue-700 mb-4">Select Workout Plan</h3>
-                <p className="text-gray-600 mb-6">Choose a plan that fits your goals. More customization options coming soon!</p>
+                <h3 className="text-2xl font-bold text-blue-700 mb-4">Manage Workout for {selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</h3>
 
-                <div className="space-y-4">
-                  {Object.keys(WORKOUT_PLANS).map(planId => (
-                    <div
-                      key={planId}
-                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200
-                        ${selectedPlanId === planId ? 'border-blue-600 bg-blue-50 shadow-md' : 'border-gray-200 bg-white hover:bg-gray-50'}
-                      `}
-                      onClick={() => handlePlanSelect(planId)}
+                {/* Move/Swap Day Section - MOVED TO TOP */}
+                <div className="mb-6 pb-4 border-b border-gray-200">
+                  <h4 className="font-semibold text-lg mb-2 text-gray-800">Move or Swap Workout Day:</h4>
+                  <p className="text-gray-600 text-sm mb-3">
+                    Move all exercises and data from {selectedDate.toLocaleDateString('en-US', { weekday: 'long' })} to another day, or swap with another day's workout.
+                  </p>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                      <button
+                        key={day}
+                        onClick={() => setTargetMoveDay(day)}
+                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors duration-200
+                          ${targetMoveDay === day ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}
+                          ${getDayName(selectedDate) === day ? 'opacity-50 cursor-not-allowed' : ''}
+                        `}
+                        disabled={getDayName(selectedDate) === day}
+                      >
+                        {day}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 mt-3">
+                    <button
+                      onClick={handleMoveWorkout}
+                      disabled={!targetMoveDay || getDayName(selectedDate) === targetMoveDay}
+                      className="flex-1 px-4 py-2 bg-indigo-500 text-white rounded-md shadow-md hover:bg-indigo-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                     >
-                      <label className="flex items-center cursor-pointer">
-                        <input
-                          type="radio"
-                          name="workoutPlan"
-                          value={planId}
-                          checked={selectedPlanId === planId}
-                          onChange={() => handlePlanSelect(planId)}
-                          className="form-radio h-5 w-5 text-blue-600 mr-3"
-                        />
-                        <div>
-                          <p className="font-semibold text-lg text-gray-800">{WORKOUT_PLANS[planId].name}</p>
-                          <p className="text-sm text-gray-600">{WORKOUT_PLANS[planId].description}</p>
-                        </div>
-                      </label>
-                    </div>
-                  ))}
+                      Move to {targetMoveDay || '...'}
+                    </button>
+                    <button
+                      onClick={handleSwapWorkouts}
+                      disabled={!targetMoveDay || getDayName(selectedDate) === targetMoveDay}
+                      className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    >
+                      Swap with {targetMoveDay || '...'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Current Exercises for the Day */}
+                <div className="mb-6">
+                  <h4 className="font-semibold text-lg mb-2 text-gray-800">Current Exercises:</h4>
+                  {workoutsForSelectedDay.length === 0 ? (
+                    <p className="text-gray-500 text-sm">No exercises added for this day yet.</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {workoutsForSelectedDay.map(ex => (
+                        <li key={ex.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-md border border-gray-200">
+                          <span className="font-medium">{ex.name}</span>
+                          <button
+                            onClick={() => handleRemoveExercise(ex.id)}
+                            className="text-red-500 hover:text-red-700 text-sm px-2 py-1 rounded-md hover:bg-red-100 transition-colors"
+                          >
+                            Remove
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                {/* Add Exercise Section */}
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <h4 className="font-semibold text-lg mb-2 text-gray-800">Add New Exercise:</h4>
+                  <input
+                    type="text"
+                    placeholder="Search exercises..."
+                    className="border border-gray-300 rounded-md w-full px-3 py-2 mb-3 focus:ring-blue-500 focus:border-blue-500"
+                    value={addExerciseSearch}
+                    onChange={(e) => {
+                      setAddExerciseSearch(e.target.value);
+                      setSelectedExerciseToAdd(''); // Clear selection on search change
+                    }}
+                  />
+                  <select
+                    className="border border-gray-300 rounded-md w-full px-3 py-2 mb-3 focus:ring-blue-500 focus:border-blue-500"
+                    value={selectedExerciseToAdd}
+                    onChange={(e) => setSelectedExerciseToAdd(e.target.value)}
+                  >
+                    <option value="">Select an exercise</option>
+                    {filteredExercises.map(ex => (
+                      <option key={ex.id} value={ex.id}>{ex.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleAddExercise}
+                    disabled={!selectedExerciseToAdd}
+                    className="w-full px-4 py-2 bg-blue-500 text-white rounded-md shadow-md hover:bg-blue-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Add Exercise to Day
+                  </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Progress Charts Modal */}
+          {showProgressModal && (
+            <div className="modal-overlay">
+              <div className="modal-content">
+                <button onClick={() => setShowProgressModal(false)} className="modal-close-button">
+                  &times;
+                </button>
+                <h3 className="text-2xl font-bold text-pink-700 mb-4">Your Progress</h3>
+
+                {/* Weekly Weight Chart */}
+                <div className="mb-8">
+                  <h4 className="font-semibold text-xl mb-4 text-gray-800">Weekly Total Weight Lifted (kg)</h4>
+                  {weightChartData.labels.length > 0 ? (
+                    <div style={{ height: '300px' }}> {/* Fixed height for responsiveness */}
+                      <ChartComponent
+                        type="line"
+                        data={weightChartData}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                            legend: {
+                              position: 'top',
+                            },
+                            title: {
+                              display: false,
+                              text: 'Weekly Total Weight Lifted (kg)'
+                            }
+                          },
+                          scales: {
+                            y: {
+                              beginAtZero: true,
+                              title: {
+                                display: true,
+                                text: 'Total Weight (kg)'
+                              }
+                            }
+                          }
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-center py-4">No weight data recorded yet.</p>
+                  )}
+                </div>
+
+                {/* Daily Steps Chart */}
+                <div>
+                  <h4 className="font-semibold text-xl mb-4 text-gray-800">Daily Steps</h4>
+                  <div className="flex justify-center space-x-2 mb-4">
+                    <button
+                      onClick={() => setStepsFilter('week')}
+                      className={`px-3 py-1 rounded-full text-sm ${stepsFilter === 'week' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                    >
+                      Current Week
+                    </button>
+                    <button
+                      onClick={() => setStepsFilter('prev-week')}
+                      className={`px-3 py-1 rounded-full text-sm ${stepsFilter === 'prev-week' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                    >
+                      Previous Week
+                    </button>
+                    <button
+                      onClick={() => setStepsFilter('month')}
+                      className={`px-3 py-1 rounded-full text-sm ${stepsFilter === 'month' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                    >
+                      Current Month
+                    </button>
+                  </div>
+                  {getStepsChartData(stepsFilter).labels.length > 0 ? (
+                    <div style={{ height: '300px' }}> {/* Fixed height for responsiveness */}
+                      <ChartComponent
+                        type="bar"
+                        data={getStepsChartData(stepsFilter)}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                            legend: {
+                              position: 'top',
+                            },
+                            title: {
+                              display: false,
+                              text: 'Daily Steps'
+                            },
+                            annotation: {
+                              annotations: {
+                                line1: {
+                                  type: 'line',
+                                  yMin: 10500,
+                                  yMax: 10500,
+                                  borderColor: 'rgb(255, 99, 132)',
+                                  borderWidth: 2,
+                                  borderDash: [5, 5],
+                                  label: {
+                                    content: 'Target: 10,500 Steps',
+                                    enabled: true,
+                                    position: 'end',
+                                    backgroundColor: 'rgba(255, 99, 132, 0.8)',
+                                    color: 'white',
+                                    font: {
+                                      size: 10
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          scales: {
+                            y: {
+                              beginAtZero: true,
+                              title: {
+                                display: true,
+                                text: 'Steps'
+                              }
+                            }
+                          }
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-center py-4">No steps data recorded for this period.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Global Rest Timer Pop-up */}
+          {restTimerVisible && restTimer > 0 && (
+            <div className="rest-timer-popup">
+              Rest: {restTimer}s
             </div>
           )}
         </main>
