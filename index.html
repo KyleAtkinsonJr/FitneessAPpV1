@@ -14,49 +14,54 @@
         body {
             font-family: 'Inter', sans-serif;
         }
-        /* Custom dark theme for Uber-like look */
-        .uber-bg {
-            background: linear-gradient(135deg, #18181b 0%, #23272f 100%);
+        /* Custom animations for the app */
+        @keyframes bounce-slow {
+          0%, 100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-5px);
+          }
         }
-        .uber-card {
-            background: linear-gradient(135deg, #23272f 0%, #18181b 100%);
-            border: 1px solid #23272f;
+        .animate-bounce-slow {
+          animation: bounce-slow 2s infinite ease-in-out;
         }
-        .uber-accent {
-            background: linear-gradient(90deg, #00e6a0 0%, #00bfff 100%);
+        @keyframes fade-in-up {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
-        .uber-accent-text {
-            color: #00e6a0;
+        .animate-fade-in-up {
+          animation: fade-in-up 0.5s ease-out forwards;
         }
-        .uber-btn {
-            background: linear-gradient(90deg, #00e6a0 0%, #00bfff 100%);
-            color: #18181b;
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.7;
+          }
         }
-        .uber-btn:hover {
-            background: linear-gradient(90deg, #00bfff 0%, #00e6a0 100%);
-            color: #fff;
+        .animate-pulse {
+          animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
-        .uber-border {
-            border-color: #00e6a0;
+        /* Hide number input arrows */
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
         }
-        .uber-shadow {
-            box-shadow: 0 4px 24px 0 rgba(0, 230, 160, 0.15), 0 1.5px 6px 0 rgba(0, 191, 255, 0.10);
-        }
-        .uber-input {
-            background: #23272f;
-            color: #fff;
-            border: 1px solid #00e6a0;
-        }
-        .uber-input:focus {
-            border-color: #00bfff;
-            outline: none;
-        }
-        .uber-label {
-            color: #b1b1b1;
+        input[type="number"] {
+            -moz-appearance: textfield;
         }
     </style>
 </head>
-<body class="uber-bg min-h-screen text-white font-inter p-4 sm:p-6 md:p-8">
+<body class="min-h-screen bg-gradient-to-br from-blue-700 to-teal-500 text-gray-900 font-inter p-4 sm:p-6 md:p-8">
     <div id="root"></div>
 
     <!-- React and ReactDOM CDN -->
@@ -148,7 +153,7 @@
                 dayKey: "cardio-late-start",
                 exercises: [
                   { id: "cardio-late-bike-elliptical", name: "60 mins on the Bike or Elliptical", sets: [{ reps: "60 mins" }], videoUrl: "https://www.youtube.com/watch?v=9mhcHHUxMuQ" },
-                  { id: "cardio-late-spin-step", name: "45 mins Spin + 15 mins Step Machine", sets: [{ reps: "45/15 mins" }], videoUrl: "https://www.youtube.com/watch?v=S3Qv6d91_G0" },
+                  { id: "cardio-late-spin-step", name: "45 mins Spin + 15 mins Step Machine", sets: [{ reps: "45/15 mins" }], videoUrl: "https://www.youtube.com/watch?v=S3Qv6d91_G0" }, // General spin class
                 ],
               },
             ],
@@ -163,7 +168,7 @@
               { day: "Thursday", workout: "60-min elliptical or spin + steps (late start)", workoutKeys: ["cardio-late-start"] },
               { day: "Friday", workout: "Strength (Upper Pull) + 30-min steps (off work)", workoutKeys: ["strength-upper-pull", "cardio-days-off"] },
               { day: "Saturday", workout: "Optional full body + 30-min steps (off work)", workoutKeys: ["strength-full-body", "cardio-days-off"] },
-              { day: "Sunday", workout: "60-min cardio or rest (if needed)", workoutKeys: ["cardio-late-start"] },
+              { day: "Sunday", workout: "60-min cardio or rest (if needed)", workoutKeys: ["cardio-late-start"] }, // Assuming 60-min cardio maps to late-start cardio
             ],
           },
         ];
@@ -183,35 +188,30 @@
         const getISOWeekDate = (date) => {
           const d = new Date(date.valueOf());
           const dayNum = d.getDay();
-          d.setDate(d.getDate() + 3 - (dayNum === 0 ? 7 : dayNum));
-          const week1 = new Date(d.getFullYear(), 0, 4);
+          d.setDate(d.getDate() + 3 - (dayNum === 0 ? 7 : dayNum)); // Set to Thursday of the current week (ISO week starts Monday)
+          const week1 = new Date(d.getFullYear(), 0, 4); // Jan 4th is always in week 1
           return d.getFullYear() + '-W' + String(1 + Math.ceil(((d.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7)).padStart(2, '0');
         };
 
         // Main App Component
         const App = () => {
           // workoutStatus now stores objects { completed: boolean, weight: number } for each set
-          const [workoutStatus, setWorkoutStatus] = useState({});
+          const [workoutStatus, setWorkoutStatus] = useState({}); // { "exercise-id": { "set-index-0": { completed: true, weight: 50 }, ... }, ... }
           const [dailyQuote, setDailyQuote] = useState('');
           const [userMessage, setUserMessage] = useState('');
 
           // Date/Week/Day Navigation States
-          const [selectedDate, setSelectedDate] = useState(new Date());
+          const [selectedDate, setSelectedDate] = useState(new Date()); // Represents the date for the currently viewed day/week
           const selectedWeekId = getISOWeekDate(selectedDate);
           const selectedDayName = getDayName(selectedDate);
+          const selectedDayIndex = selectedDate.getDay(); // 0 for Sunday, 1 for Monday
 
           // Timer state
-          const REST_TIMER_DURATION = 60;
+          const REST_TIMER_DURATION = 60; // 1 minute in seconds
           const [timer, setTimer] = useState(REST_TIMER_DURATION);
           const [isTimerActive, setIsTimerActive] = useState(false);
           const [showTimer, setShowTimer] = useState(false);
           const timerIntervalRef = useRef(null);
-
-          // Custom schedule state for swapping days
-          const [customSchedule, setCustomSchedule] = useState(WORKOUT_PLAN.find(s => s.isSchedule).schedule);
-          const [swapModalOpen, setSwapModalOpen] = useState(false);
-          const [swapDayA, setSwapDayA] = useState('');
-          const [swapDayB, setSwapDayB] = useState('');
 
           // Load workout status from local storage on initial render or week change
           useEffect(() => {
@@ -220,15 +220,18 @@
                 const storedData = localStorage.getItem(`workouts-${selectedWeekId}`);
                 if (storedData) {
                   setWorkoutStatus(JSON.parse(storedData));
+                  console.log("Workouts loaded from localStorage for week:", selectedWeekId);
                 } else {
-                  setWorkoutStatus({});
+                  setWorkoutStatus({}); // No data for this week
+                  console.log("No workouts found in localStorage for week:", selectedWeekId);
                 }
               } catch (error) {
+                console.error("Error loading from localStorage:", error);
                 setUserMessage("Error loading workout progress locally.");
               }
             };
             loadWorkouts();
-          }, [selectedWeekId]);
+          }, [selectedWeekId]); // Reload when selectedWeekId changes
 
           // Set daily motivational quote
           useEffect(() => {
@@ -255,6 +258,7 @@
               clearInterval(timerIntervalRef.current);
               setIsTimerActive(false);
             }
+
             return () => clearInterval(timerIntervalRef.current);
           }, [isTimerActive, timer]);
 
@@ -262,6 +266,7 @@
             setTimer(REST_TIMER_DURATION);
             setIsTimerActive(true);
             setShowTimer(true);
+            console.log("Timer started.");
           };
 
           const resetTimer = () => {
@@ -269,20 +274,26 @@
             setIsTimerActive(false);
             setTimer(REST_TIMER_DURATION);
             setShowTimer(false);
+            console.log("Timer reset.");
           };
 
-          // Save workout status to local storage
+          // Function to save workout status to local storage
           const saveWorkoutsToLocalStorage = useCallback((data) => {
             try {
               localStorage.setItem(`workouts-${selectedWeekId}`, JSON.stringify(data));
-              setUserMessage('');
+              console.log("Workouts saved to localStorage for week:", selectedWeekId);
+              setUserMessage(''); // Clear any previous error messages
             } catch (error) {
+              console.error("Error saving to localStorage:", error);
               setUserMessage("Failed to save workout data locally. Storage might be full.");
             }
           }, [selectedWeekId]);
 
-          // Handle set data change
+          // Function to handle toggling set completion and saving weight
           const handleSetDataChange = useCallback((exerciseId, setIndex, field, value) => {
+            console.log(`Attempting to update ${exerciseId} set ${setIndex}, field ${field} to ${value}.`);
+
+            // Create a deep copy to avoid direct state mutation
             const updatedWorkoutStatus = JSON.parse(JSON.stringify(workoutStatus));
             if (!updatedWorkoutStatus[exerciseId]) {
               updatedWorkoutStatus[exerciseId] = {};
@@ -290,26 +301,34 @@
             if (!updatedWorkoutStatus[exerciseId][`set-${setIndex}`]) {
               updatedWorkoutStatus[exerciseId][`set-${setIndex}`] = { completed: false, weight: '' };
             }
+
+            // Explicitly handle weight as a number or empty string
             if (field === 'weight') {
                 const numericValue = parseFloat(value);
                 updatedWorkoutStatus[exerciseId][`set-${setIndex}`][field] = isNaN(numericValue) ? '' : numericValue;
             } else {
                 updatedWorkoutStatus[exerciseId][`set-${setIndex}`][field] = value;
             }
+
+            // Update local state immediately for responsiveness
             setWorkoutStatus(updatedWorkoutStatus);
+            // Save to local storage
             saveWorkoutsToLocalStorage(updatedWorkoutStatus);
+
+            // If a set is being marked complete, start timer
             if (field === 'completed' && value === true) {
               startTimer();
             }
           }, [workoutStatus, saveWorkoutsToLocalStorage]);
 
-          // Confirm set button
+          // Function to handle "Confirm Set" button click
           const handleConfirmSet = useCallback((exerciseId, setIndex) => {
             const currentSetStatus = workoutStatus[exerciseId]?.[`set-${setIndex}`]?.completed || false;
             handleSetDataChange(exerciseId, setIndex, 'completed', !currentSetStatus);
           }, [workoutStatus, handleSetDataChange]);
 
-          // Check if all sets for an exercise are completed
+
+          // Function to check if all sets for an exercise are completed
           const areAllSetsCompleted = (exerciseId, totalSets) => {
             const exerciseSetsStatus = workoutStatus[exerciseId] || {};
             for (let i = 0; i < totalSets; i++) {
@@ -322,12 +341,14 @@
 
           // Navigation functions for weeks
           const goToPreviousWeek = () => {
+            console.log("Going to previous week.");
             const newDate = new Date(selectedDate);
             newDate.setDate(newDate.getDate() - 7);
             setSelectedDate(newDate);
           };
 
           const goToNextWeek = () => {
+            console.log("Going to next week.");
             const newDate = new Date(selectedDate);
             newDate.setDate(newDate.getDate() + 7);
             setSelectedDate(newDate);
@@ -335,62 +356,38 @@
 
           // Navigation functions for days within the selected week
           const goToPreviousDay = () => {
+            console.log("Going to previous day.");
             const newDate = new Date(selectedDate);
             newDate.setDate(newDate.getDate() - 1);
             setSelectedDate(newDate);
           };
 
           const goToNextDay = () => {
+            console.log("Going to next day.");
             const newDate = new Date(selectedDate);
             newDate.setDate(newDate.getDate() + 1);
             setSelectedDate(newDate);
           };
 
           const goToToday = () => {
-            setSelectedDate(new Date());
+            console.log("Going to today.");
+            setSelectedDate(new Date()); // Set to current date
           };
-
-          // Swap modal logic
-          const openSwapModal = () => setSwapModalOpen(true);
-          const closeSwapModal = () => {
-            setSwapDayA('');
-            setSwapDayB('');
-            setSwapModalOpen(false);
-          };
-          const handleSwapDays = () => {
-            const idxA = customSchedule.findIndex(d => d.day === swapDayA);
-            const idxB = customSchedule.findIndex(d => d.day === swapDayB);
-            if (idxA !== -1 && idxB !== -1) {
-              const newSchedule = [...customSchedule];
-              [newSchedule[idxA], newSchedule[idxB]] = [newSchedule[idxB], newSchedule[idxA]];
-              setCustomSchedule(newSchedule);
-              closeSwapModal();
-            }
-          };
-
-          // Get previous week's workout status for weight carry-over
-          const getPreviousWeekStatus = () => {
-            const prevWeekDate = new Date(selectedDate);
-            prevWeekDate.setDate(prevWeekDate.getDate() - 7);
-            const prevWeekId = getISOWeekDate(prevWeekDate);
-            try {
-              const storedData = localStorage.getItem(`workouts-${prevWeekId}`);
-              return storedData ? JSON.parse(storedData) : {};
-            } catch {
-              return {};
-            }
-          };
-          const previousWeekStatus = getPreviousWeekStatus();
 
           // Get scheduled workouts for the selected day
           const getWorkoutsForSelectedDay = () => {
-            const scheduleSection = { schedule: customSchedule };
+            const scheduleSection = WORKOUT_PLAN.find(s => s.isSchedule);
+            if (!scheduleSection) return [];
+
+            // Map selectedDayIndex (0=Sunday, 1=Monday) to schedule's day string
             const currentDaySchedule = scheduleSection.schedule.find(item => item.day === selectedDayName);
+
             if (!currentDaySchedule || !currentDaySchedule.workoutKeys) return [];
+
             const exercisesForDay = [];
             currentDaySchedule.workoutKeys.forEach(key => {
               WORKOUT_PLAN.forEach(section => {
-                if (!section.isSchedule) {
+                if (!section.isSchedule) { // Not the schedule section
                   const dayWorkout = section.days.find(d => d.dayKey === key);
                   if (dayWorkout) {
                     exercisesForDay.push({
@@ -408,227 +405,191 @@
           const workoutsForToday = getWorkoutsForSelectedDay();
 
           return (
-            <div className="max-w-4xl mx-auto">
+            <div className="min-h-screen bg-gradient-to-br from-blue-700 to-teal-500 text-gray-900 font-inter p-4 sm:p-6 md:p-8">
+              <div className="max-w-4xl mx-auto">
+                {/* Header */}
+                <h1 className="text-4xl sm:text-5xl font-extrabold text-center mb-6 drop-shadow-lg text-white">
+                  <span className="inline-block animate-bounce-slow">🏋️‍♀️</span> Fitness Tracker
+                </h1>
 
-            {/* Header */}
-            <h1 className="text-4xl sm:text-5xl font-extrabold text-center mb-6 uber-accent-text drop-shadow-lg">
-              <span className="inline-block animate-bounce-slow">🏋️‍♀️</span> Fitness Tracker
-            </h1>
+                {/* Motivation Quote */}
+                <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-6 mb-8 shadow-2xl border border-white border-opacity-30">
+                  <h2 className="text-2xl sm:text-3xl font-extrabold mb-3 text-center text-yellow-300">Daily Motivation</h2>
+                  <p className="text-lg italic text-center leading-relaxed text-white">
+                    "{dailyQuote}"
+                  </p>
+                </div>
 
-            {/* Motivation Quote */}
-            <div className="uber-card rounded-xl p-6 mb-8 uber-shadow">
-              <h2 className="text-2xl sm:text-3xl font-extrabold mb-3 text-center uber-accent-text">Daily Motivation</h2>
-              <p className="text-lg italic text-center leading-relaxed text-gray-300">
-                "{dailyQuote}"
-              </p>
-            </div>
+                {/* User Message/Error Display */}
+                {userMessage && (
+                  <div className="bg-red-500 bg-opacity-70 text-white p-3 rounded-lg mb-4 text-center shadow-md">
+                    {userMessage}
+                  </div>
+                )}
 
-            {/* User Message/Error Display */}
-            {userMessage && (
-              <div className="bg-red-600 bg-opacity-80 text-white p-3 rounded-lg mb-4 text-center uber-shadow">
-                {userMessage}
-              </div>
-            )}
+                {/* Rest Timer */}
+                {showTimer && (
+                  <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+                    <div className="bg-gradient-to-br from-blue-600 to-purple-700 rounded-2xl p-8 shadow-2xl text-white text-center border-4 border-blue-400 animate-fade-in-up">
+                      <h2 className="text-4xl font-extrabold mb-4">Rest Time!</h2>
+                      <div className="text-7xl font-extrabold mb-6 animate-pulse">
+                        {String(Math.floor(timer / 60)).padStart(2, '0')}:
+                        {String(timer % 60).padStart(2, '0')}
+                      </div>
+                      <button
+                        onClick={resetTimer}
+                        className="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
+                      >
+                        Skip Rest
+                      </button>
+                    </div>
+                  </div>
+                )}
 
-            {/* Rest Timer */}
-            {showTimer && (
-              <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-                <div className="uber-card rounded-2xl p-8 uber-shadow text-white text-center border-4 uber-border animate-fade-in-up">
-                  <h2 className="text-4xl font-extrabold mb-4 uber-accent-text">Rest Time!</h2>
-                  <div className="text-7xl font-extrabold mb-6 animate-pulse uber-accent-text">
-                    {String(Math.floor(timer / 60)).padStart(2, '0')}:
-                    {String(timer % 60).padStart(2, '0')}
+                {/* Week Navigation and Current Week Display */}
+                <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4 mb-8 shadow-2xl border border-white border-opacity-30 text-white text-center">
+                  <div className="flex items-center justify-between mb-4">
+                    <button
+                      onClick={goToPreviousWeek}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
+                    >
+                      &lt; Prev Week
+                    </button>
+                    <h2 className="text-xl sm:text-2xl font-extrabold text-green-300">Week: {selectedWeekId}</h2>
+                    <button
+                      onClick={goToNextWeek}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
+                    >
+                      Next Week &gt;
+                    </button>
+                  </div>
+                  <p className="text-lg">Viewing workouts for: <span className="font-extrabold text-yellow-300">{selectedDate.toDateString()}</span></p>
+                </div>
+
+                {/* Sample Weekly Schedule - Always at top of workout content */}
+                {WORKOUT_PLAN.find(s => s.isSchedule) && (
+                  <div className="bg-white bg-opacity-15 backdrop-blur-sm rounded-xl p-5 sm:p-6 mb-8 shadow-2xl border border-white border-opacity-30">
+                    <h2 className="text-2xl sm:text-3xl font-extrabold mb-4 text-yellow-200">Weekly Workout Schedule</h2>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full bg-white bg-opacity-10 rounded-lg shadow-inner">
+                        <thead>
+                          <tr className="bg-blue-700 bg-opacity-50">
+                            <th className="py-3 px-4 text-left text-sm font-extrabold text-gray-100 rounded-tl-lg">Day</th>
+                            <th className="py-3 px-4 text-left text-sm font-extrabold text-gray-100 rounded-tr-lg">Workout</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {WORKOUT_PLAN.find(s => s.isSchedule).schedule.map((item, idx) => (
+                            <tr key={idx} className={`${item.day === selectedDayName ? 'bg-blue-500 bg-opacity-30' : (idx % 2 === 0 ? 'bg-opacity-5' : 'bg-opacity-10')} hover:bg-opacity-20 transition-colors`}>
+                              <td className="py-3 px-4 text-base text-gray-100">{item.day}</td>
+                              <td className="py-3 px-4 text-base text-gray-100">{item.workout}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Daily Workout Navigation */}
+                <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4 mb-8 shadow-2xl border border-white border-opacity-30 text-white text-center">
+                  <div className="flex items-center justify-between mb-4">
+                    <button
+                      onClick={goToPreviousDay}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
+                    >
+                      &lt; Prev Day
+                    </button>
+                    <h2 className="text-xl sm:text-2xl font-extrabold text-green-300">Workouts for {selectedDayName}</h2>
+                    <button
+                      onClick={goToNextDay}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
+                    >
+                      Next Day &gt;
+                    </button>
                   </div>
                   <button
-                    onClick={resetTimer}
-                    className="uber-btn font-bold py-3 px-6 rounded-full uber-shadow transition duration-300 ease-in-out transform hover:scale-105"
+                    onClick={goToToday}
+                    className="mt-3 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
                   >
-                    Skip Rest
+                    Go to Today
                   </button>
                 </div>
-              </div>
-            )}
 
-            {/* Week Navigation and Current Week Display */}
-            <div className="uber-card rounded-xl p-4 mb-8 uber-shadow text-white text-center">
-              <div className="flex items-center justify-between mb-4 gap-x-4">
-                <button
-                  onClick={goToPreviousWeek}
-                  className="uber-btn font-bold py-2 px-4 rounded-full uber-shadow transition duration-300 ease-in-out transform hover:scale-105"
-                >
-                  &lt; Prev Week
-                </button>
-                <h2 className="text-xl sm:text-2xl font-extrabold uber-accent-text">Week: {selectedWeekId}</h2>
-                <button
-                  onClick={goToNextWeek}
-                  className="uber-btn font-bold py-2 px-4 rounded-full uber-shadow transition duration-300 ease-in-out transform hover:scale-105"
-                >
-                  Next Week &gt;
-                </button>
-              </div>
-              <p className="text-lg">Viewing workouts for: <span className="font-extrabold uber-accent-text">{selectedDate.toDateString()}</span></p>
-            </div>
-
-            {/* Sample Weekly Schedule */}
-            <div className="uber-card rounded-xl p-5 sm:p-6 mb-8 uber-shadow">
-              <h2 className="text-2xl sm:text-3xl font-extrabold mb-4 uber-accent-text">Weekly Workout Schedule</h2>
-              <div className="overflow-x-auto">
-                <table className="min-w-full rounded-lg uber-shadow">
-                  <thead>
-                    <tr className="uber-accent">
-                      <th className="py-3 px-4 text-left text-sm font-extrabold text-black rounded-tl-lg">Day</th>
-                      <th className="py-3 px-4 text-left text-sm font-extrabold text-black rounded-tr-lg">Workout</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {customSchedule.map((item, idx) => (
-                      <tr key={idx} className={`${item.day === selectedDayName ? 'uber-accent-text bg-opacity-10' : 'text-gray-300'} hover:bg-opacity-20 transition-colors`}>
-                        <td className="py-3 px-4 text-base">{item.day}</td>
-                        <td className="py-3 px-4 text-base">{item.workout}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <button
-                className="mt-4 uber-btn font-bold py-2 px-4 rounded-full uber-shadow"
-                onClick={openSwapModal}
-              >
-                Swap Workout/Cardio Days
-              </button>
-              {swapModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
-                  <div className="uber-card rounded-xl p-6 uber-shadow text-white w-full max-w-xs">
-                    <h3 className="font-bold mb-2 uber-accent-text">Swap Days</h3>
-                    <select className="mb-2 w-full p-2 rounded uber-input" value={swapDayA} onChange={e => setSwapDayA(e.target.value)}>
-                      <option value="">Select Day A</option>
-                      {customSchedule.map(d => <option key={d.day} value={d.day}>{d.day}</option>)}
-                    </select>
-                    <select className="mb-4 w-full p-2 rounded uber-input" value={swapDayB} onChange={e => setSwapDayB(e.target.value)}>
-                      <option value="">Select Day B</option>
-                      {customSchedule.map(d => <option key={d.day} value={d.day}>{d.day}</option>)}
-                    </select>
-                    <button
-                      className="uber-btn font-bold py-2 px-4 rounded mr-2"
-                      onClick={handleSwapDays}
-                      disabled={!swapDayA || !swapDayB || swapDayA === swapDayB}
-                    >
-                      Swap
-                    </button>
-                    <button
-                      className="bg-gray-700 hover:bg-gray-900 text-white font-bold py-2 px-4 rounded"
-                      onClick={closeSwapModal}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Daily Workout Navigation */}
-            <div className="uber-card rounded-xl p-4 mb-8 uber-shadow text-white text-center">
-              <div className="flex items-center justify-between mb-4 gap-x-4">
-                <button
-                  onClick={goToPreviousDay}
-                  className="uber-btn font-bold py-2 px-4 rounded-full uber-shadow transition duration-300 ease-in-out transform hover:scale-105"
-                >
-                  &lt; Prev Day
-                </button>
-                <h2 className="text-xl sm:text-2xl font-extrabold uber-accent-text">Workouts for {selectedDayName}</h2>
-                <button
-                  onClick={goToNextDay}
-                  className="uber-btn font-bold py-2 px-4 rounded-full uber-shadow transition duration-300 ease-in-out transform hover:scale-105"
-                >
-                  Next Day &gt;
-                </button>
-              </div>
-              <button
-                onClick={goToToday}
-                className="mt-3 uber-btn font-bold py-2 px-6 rounded-full uber-shadow transition duration-300 ease-in-out transform hover:scale-105"
-              >
-                Go to Today
-              </button>
-            </div>
-
-            {/* Display Workouts for the Selected Day */}
-            {workoutsForToday.length > 0 ? (
-              workoutsForToday.map((section, sectionIndex) => (
-                <div key={sectionIndex} className="uber-card rounded-xl p-5 sm:p-6 mb-8 uber-shadow">
-                  <h2 className="text-2xl sm:text-3xl font-extrabold mb-4 uber-accent-text">{section.category}</h2>
-                  <h3 className="text-xl sm:text-2xl font-extrabold mb-3 text-blue-400">{section.dayName}</h3>
-                  <ul className="space-y-3">
-                    {section.exercises.map((exercise) => (
-                      <li key={exercise.id} className={`flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-md p-3 uber-shadow hover:bg-opacity-10 transition-colors ${areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'border-l-4 uber-border' : ''}`}>
-                        <div className="flex items-center flex-grow mb-2 sm:mb-0">
-                          <span className={`text-lg sm:text-xl font-medium ${areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'line-through text-gray-500' : 'text-white'}`}>
-                            {exercise.name}
-                          </span>
-                        </div>
-                        <div className="flex items-center flex-wrap gap-2 sm:ml-4">
-                          {exercise.sets.map((set, setIndex) => (
-                            <div key={setIndex} className="flex items-center uber-accent text-black text-sm font-bold py-2 px-3 rounded-md uber-shadow transition duration-200 ease-in-out">
-                              <div className="flex flex-col items-center">
-                                <label htmlFor={`${exercise.id}-set-${setIndex}-${selectedWeekId}-weight`} className="sr-only">Weight for Set {setIndex + 1}</label>
-                                <input
-                                  type="number"
-                                  id={`${exercise.id}-set-${setIndex}-${selectedWeekId}-weight`}
-                                  placeholder="Weight"
-                                  value={(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].weight) || ''}
-                                  onChange={(e) => handleSetDataChange(exercise.id, setIndex, 'weight', e.target.value)}
-                                  className="w-20 p-1 rounded-md uber-input text-center mb-1"
-                                  min="0"
-                                />
-                                {previousWeekStatus[exercise.id] && previousWeekStatus[exercise.id][`set-${setIndex}`] && (
-                                  <span className="text-xs text-gray-400 mt-1">
-                                    Prev: {previousWeekStatus[exercise.id][`set-${setIndex}`].weight || '—'} kg, 
-                                    {previousWeekStatus[exercise.id][`set-${setIndex}`].reps || set.reps} reps
-                                  </span>
-                                )}
-                                <span className="mb-1 uber-label">Set {setIndex + 1} ({set.reps})</span>
-                                <button
-                                    onClick={() => handleConfirmSet(exercise.id, setIndex)}
-                                    className={`py-1 px-3 rounded-full text-xs font-bold transition duration-200 ease-in-out
-                                        ${(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].completed)
-                                            ? 'uber-btn'
-                                            : 'bg-gray-700 hover:bg-gray-900 text-white'
-                                        }`}
-                                >
-                                    {(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].completed) ? 'Completed' : 'Confirm Set'}
-                                </button>
-                              </div>
+                {/* Display Workouts for the Selected Day */}
+                {workoutsForToday.length > 0 ? (
+                  workoutsForToday.map((section, sectionIndex) => (
+                    <div key={sectionIndex} className="bg-white bg-opacity-15 backdrop-blur-sm rounded-xl p-5 sm:p-6 mb-8 shadow-2xl border border-white border-opacity-30">
+                      <h2 className="text-2xl sm:text-3xl font-extrabold mb-4 text-yellow-200">{section.category}</h2>
+                      <h3 className="text-xl sm:text-2xl font-extrabold mb-3 text-blue-200">{section.dayName}</h3>
+                      <ul className="space-y-3">
+                        {section.exercises.map((exercise) => (
+                          <li key={exercise.id} className={`flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white bg-opacity-5 rounded-md p-3 shadow-sm hover:bg-opacity-10 transition-colors ${areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'border-l-4 border-green-500' : ''}`}>
+                            <div className="flex items-center flex-grow mb-2 sm:mb-0">
+                              <span className={`text-lg sm:text-xl font-medium ${areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'line-through text-gray-400' : 'text-white'}`}>
+                                {exercise.name}
+                              </span>
                             </div>
-                          ))}
-                          {exercise.videoUrl && (
-                            <a
-                              href={exercise.videoUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="ml-2 p-2 rounded-full uber-accent text-black uber-shadow transition duration-200 ease-in-out transform hover:scale-110"
-                              aria-label={`Watch video for ${exercise.name}`}
-                            >
-                              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd"></path>
-                              </svg>
-                            </a>
-                          )}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))
-            ) : (
-              <div className="uber-card rounded-xl p-5 sm:p-6 mb-8 uber-shadow text-white text-center">
-                <p className="text-lg">No specific workouts scheduled for {selectedDayName} in this week.</p>
-              </div>
-            )}
+                            <div className="flex items-center flex-wrap gap-2 sm:ml-4">
+                              {exercise.sets.map((set, setIndex) => (
+                                <div key={setIndex} className="flex items-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-3 rounded-md shadow-md transition duration-200 ease-in-out">
+                                  <div className="flex flex-col items-center">
+                                    <label htmlFor={`${exercise.id}-set-${setIndex}-${selectedWeekId}-weight`} className="sr-only">Weight for Set {setIndex + 1}</label>
+                                    <input
+                                      type="number"
+                                      id={`${exercise.id}-set-${setIndex}-${selectedWeekId}-weight`}
+                                      placeholder="Weight"
+                                      value={(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].weight) || ''}
+                                      onChange={(e) => handleSetDataChange(exercise.id, setIndex, 'weight', e.target.value)}
+                                      className="w-20 p-1 rounded-md text-gray-900 bg-white bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-300 text-center mb-1"
+                                      min="0"
+                                    />
+                                    <span className="mb-1">Set {setIndex + 1} ({set.reps})</span>
+                                    <button
+                                        onClick={() => handleConfirmSet(exercise.id, setIndex)}
+                                        className={`py-1 px-3 rounded-full text-xs font-bold transition duration-200 ease-in-out
+                                            ${(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].completed)
+                                                ? 'bg-green-500 hover:bg-green-600'
+                                                : 'bg-gray-400 hover:bg-gray-500'
+                                            } text-white`}
+                                    >
+                                        {(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].completed) ? 'Completed' : 'Confirm Set'}
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                              {exercise.videoUrl && (
+                                <a
+                                  href={exercise.videoUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="ml-2 p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-md transition duration-200 ease-in-out transform hover:scale-110"
+                                  aria-label={`Watch video for ${exercise.name}`}
+                                >
+                                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd"></path>
+                                  </svg>
+                                </a>
+                              )}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))
+                ) : (
+                  <div className="bg-white bg-opacity-15 backdrop-blur-sm rounded-xl p-5 sm:p-6 mb-8 shadow-2xl border border-white border-opacity-30 text-white text-center">
+                    <p className="text-lg">No specific workouts scheduled for {selectedDayName} in this week.</p>
+                  </div>
+                )}
 
-            {/* Footer */}
-            <div className="text-center text-gray-500 text-sm mt-8">
-              <p>&copy; 2025 Fitness Tracker. All rights reserved.</p>
+                {/* Footer */}
+                <div className="text-center text-gray-300 text-sm mt-8">
+                  <p>&copy; 2025 Fitness Tracker. All rights reserved.</p>
+                </div>
+              </div>
             </div>
-          </div>
+          );
         };
 
         // Render the React app
