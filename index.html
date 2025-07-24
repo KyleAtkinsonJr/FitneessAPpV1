@@ -4,14 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Fitness Tracker</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="data:," />
   <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-900 font-sans">
+  <div id="root" class="max-w-2xl mx-auto p-4"></div>
+
+  <!-- React, ReactDOM (Client build for React 18), Babel -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.client.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <link rel="manifest" href="manifest.json" />
-</head>
-<body class="bg-gray-100 min-h-screen text-gray-900 font-sans">
-  <div id="root" class="max-w-2xl mx-auto p-4"></div>
 
   <script type="text/babel">
     const { useState, useEffect } = React;
@@ -24,49 +27,37 @@
     ];
 
     const today = new Date().toISOString().split("T")[0];
-    const currentWeekKey = `week-${getWeekNumber(new Date())}`;
-    const previousWeekKey = `week-${getWeekNumber(new Date()) - 1}`;
-
-    const WORKOUTS = [
-      { id: 'squats', name: 'Squats', sets: 3, reps: 12 },
-      { id: 'pushups', name: 'Push-ups', sets: 3, reps: 15 },
-    ];
-
-    function getWeekNumber(date) {
+    const getWeekNumber = (date) => {
       const d = new Date(date.getTime());
       d.setHours(0, 0, 0, 0);
       d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
       const week1 = new Date(d.getFullYear(), 0, 4);
-      return (
-        1 +
-        Math.round(
-          ((d.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) /
-            7
-        )
-      );
-    }
+      return 1 + Math.round(((d - week1) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
+    };
+    const week = getWeekNumber(new Date());
+    const currentWeekKey = `week-${week}`;
+    const previousWeekKey = `week-${week - 1}`;
+
+    const WORKOUTS = [
+      { id: 'squats', name: 'Squats', sets: 3, reps: 12 },
+      { id: 'pushups', name: 'Push-ups', sets: 3, reps: 15 }
+    ];
 
     const App = () => {
       const [quote, setQuote] = useState('');
-      const [data, setData] = useState(() => {
-        const saved = localStorage.getItem(currentWeekKey);
-        return saved ? JSON.parse(saved) : {};
-      });
-
-      const [prevWeekData, setPrevWeekData] = useState(() => {
-        const saved = localStorage.getItem(previousWeekKey);
-        return saved ? JSON.parse(saved) : {};
-      });
+      const [data, setData] = useState(() => JSON.parse(localStorage.getItem(currentWeekKey) || '{}'));
+      const [prevData, setPrevData] = useState(() => JSON.parse(localStorage.getItem(previousWeekKey) || '{}'));
 
       useEffect(() => {
-        const stored = localStorage.getItem("quote-date");
-        if (stored !== today) {
-          const random = MOTIVATION_QUOTES[Math.floor(Math.random() * MOTIVATION_QUOTES.length)];
+        const savedDate = localStorage.getItem("quote-date");
+        const savedQuote = localStorage.getItem("quote-text");
+        if (savedDate !== today || !savedQuote) {
+          const newQuote = MOTIVATION_QUOTES[Math.floor(Math.random() * MOTIVATION_QUOTES.length)];
           localStorage.setItem("quote-date", today);
-          localStorage.setItem("quote-text", random);
-          setQuote(random);
+          localStorage.setItem("quote-text", newQuote);
+          setQuote(newQuote);
         } else {
-          setQuote(localStorage.getItem("quote-text"));
+          setQuote(savedQuote);
         }
       }, []);
 
@@ -76,44 +67,44 @@
         if (!updated[exerciseId][`set-${setIndex}`]) {
           updated[exerciseId][`set-${setIndex}`] = { weight: '', completed: false };
         }
-        updated[exerciseId][`set-${setIndex}`][field] = field === 'completed' ? value : Number(value);
+        updated[exerciseId][`set-${setIndex}`][field] =
+          field === 'completed' ? value : Number(value);
         setData(updated);
         localStorage.setItem(currentWeekKey, JSON.stringify(updated));
       };
 
       return (
-        <main className="bg-white shadow rounded-xl p-6 space-y-6">
+        <main className="bg-white rounded-xl shadow-md p-6 space-y-6">
           <h1 className="text-3xl font-bold text-center">🏋️ Fitness Tracker</h1>
-
-          <div className="text-center bg-blue-50 p-3 rounded text-blue-700 font-semibold">
+          <div className="text-center bg-blue-100 text-blue-800 px-4 py-3 rounded">
             “{quote}”
           </div>
 
           <section>
-            <h2 className="text-xl font-bold mb-2">Today's Workout</h2>
-            {WORKOUTS.map((exercise) => (
-              <div key={exercise.id} className="mb-4 border-b pb-2">
-                <h3 className="font-semibold">{exercise.name} — {exercise.reps} reps x {exercise.sets} sets</h3>
+            <h2 className="text-xl font-semibold mb-2">Today's Workout</h2>
+            {WORKOUTS.map(ex => (
+              <div key={ex.id} className="mb-4 border-b pb-2">
+                <h3 className="font-medium">{ex.name} — {ex.reps} reps x {ex.sets} sets</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
-                  {Array.from({ length: exercise.sets }).map((_, i) => {
-                    const current = data[exercise.id]?.[`set-${i}`] || {};
-                    const previous = prevWeekData[exercise.id]?.[`set-${i}`] || {};
+                  {Array.from({ length: ex.sets }).map((_, i) => {
+                    const current = data[ex.id]?.[`set-${i}`] || {};
+                    const previous = prevData[ex.id]?.[`set-${i}`] || {};
                     return (
-                      <div key={i} className="flex flex-col gap-1 border p-2 rounded">
-                        <label className="text-sm">Set {i + 1}</label>
+                      <div key={i} className="border p-2 rounded space-y-1 text-sm">
+                        <label className="block font-medium">Set {i + 1}</label>
                         <input
                           type="number"
-                          className="border rounded px-2 py-1 text-sm"
+                          className="border rounded w-full px-2 py-1"
                           placeholder="Weight (kg)"
                           value={current.weight ?? ''}
-                          onChange={(e) => updateSet(exercise.id, i, 'weight', e.target.value)}
+                          onChange={(e) => updateSet(ex.id, i, 'weight', e.target.value)}
                         />
-                        <label className="inline-flex items-center text-sm">
+                        <label className="inline-flex items-center">
                           <input
                             type="checkbox"
                             className="mr-2"
                             checked={current.completed || false}
-                            onChange={(e) => updateSet(exercise.id, i, 'completed', e.target.checked)}
+                            onChange={(e) => updateSet(ex.id, i, 'completed', e.target.checked)}
                           />
                           Completed
                         </label>
@@ -131,11 +122,11 @@
       );
     };
 
-    const root = createRoot(document.getElementById('root'));
+    const root = createRoot(document.getElementById("root"));
     root.render(<App />);
   </script>
 
-  <!-- Register Service Worker -->
+  <!-- Service Worker -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
