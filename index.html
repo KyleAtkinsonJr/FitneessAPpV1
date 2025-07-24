@@ -107,6 +107,18 @@
       from { opacity: 0; transform: translateX(-50%) translateY(20px); }
       to { opacity: 1; transform: translateX(-50%) translateY(0); }
     }
+
+    /* Highlight for moved/swapped days */
+    .highlight-day {
+      background-color: #a78bfa !important; /* purple-400 */
+      color: white !important;
+      animation: highlightPulse 0.8s ease-in-out infinite alternate;
+    }
+
+    @keyframes highlightPulse {
+      from { box-shadow: 0 0 0 0 rgba(167, 139, 250, 0.7); }
+      to { box-shadow: 0 0 0 8px rgba(167, 139, 250, 0); }
+    }
   </style>
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100 text-gray-900 font-sans min-h-screen flex items-center justify-center py-8">
@@ -323,7 +335,7 @@
     };
 
     // --- Calendar Component ---
-    const Calendar = ({ currentWeekStart, selectedDate, onSelectDay, onPrevWeek, onNextWeek, workoutPlans, selectedPlanId, allWorkoutData }) => {
+    const Calendar = ({ currentWeekStart, selectedDate, onSelectDay, onPrevWeek, onNextWeek, workoutPlans, selectedPlanId, allWorkoutData, highlightedDate }) => {
       const days = [];
       let currentDay = new Date(currentWeekStart);
 
@@ -332,14 +344,17 @@
           const dayName = getDayName(date);
           const dateKey = formatDate(date);
 
-          // Check if the day has custom exercises saved in allWorkoutData
-          if (allWorkoutData[dateKey] && allWorkoutData[dateKey].exercises && allWorkoutData[dateKey].exercises.length > 0) {
+          const customizedExercises = allWorkoutData[dateKey]?.exercises;
+          const hasCustomExercises = Array.isArray(customizedExercises) && customizedExercises.length > 0;
+          const wasCustomizedButEmpty = Array.isArray(customizedExercises) && customizedExercises.length === 0;
+
+          if (hasCustomExercises) {
               return 'Custom Workout';
           }
 
-          // Fallback to the selected plan's schedule
           const plannedExercises = workoutPlans[selectedPlanId]?.schedule[dayName];
-          if (!plannedExercises || plannedExercises.length === 0) {
+
+          if (wasCustomizedButEmpty || !plannedExercises || plannedExercises.length === 0) {
               return 'Rest Day';
           }
 
@@ -352,7 +367,7 @@
               case 'Fri': return 'Active Recovery';
               case 'Sat':
               case 'Sun': return 'Rest Day';
-              default: return 'Workout'; // Fallback for unexpected cases
+              default: return 'Workout';
           }
       };
 
@@ -363,6 +378,7 @@
         const today = formatDate(new Date()) === formatDate(day);
         const dayType = getWorkoutTypeForDay(day); // Get the workout type for the day
         const dayIcon = WORKOUT_TYPE_ICONS[dayType]; // Get the icon for the workout type
+        const isHighlighted = formatDate(day) === highlightedDate;
 
         days.push(
           <button
@@ -371,6 +387,7 @@
             className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all duration-300 transform hover:scale-105
               ${isSelected ? 'bg-blue-600 text-white shadow-lg' : 'bg-white text-gray-700 hover:bg-blue-50 shadow-md'}
               ${today && !isSelected ? 'border-2 border-blue-400 text-blue-700 font-bold' : ''}
+              ${isHighlighted ? 'highlight-day' : ''}
               w-full h-24 sm:h-28 text-center
             `}
           >
@@ -571,6 +588,7 @@
       const [restTimer, setRestTimer] = useState(0);
       const [restTimerVisible, setRestTimerVisible] = useState(false);
       const [isChartJsLoaded, setIsChartJsLoaded] = useState(false); // New state for Chart.js loading
+      const [highlightedDate, setHighlightedDate] = useState(null); // New state for highlighting
 
       const [selectedPlanId, setSelectedPlanId] = useState(() => {
         try {
@@ -604,9 +622,15 @@
 
         // Deep copy exercise data for the current day
         const exercisesCopy = {};
-        const plannedExercises = currentDayData.exercises || WORKOUT_PLANS[selectedPlanId]?.schedule[getDayName(selectedDate)] || [];
+        const defaultPlannedExercises = WORKOUT_PLANS[selectedPlanId]?.schedule[getDayName(selectedDate)] || [];
+        const customizedExercises = currentDayData.exercises;
 
-        plannedExercises.forEach(ex => {
+        // Determine which set of exercises to use for the current day's display and logging
+        const exercisesToLoad = Array.isArray(customizedExercises)
+          ? customizedExercises // If explicitly customized (even if empty), use it
+          : defaultPlannedExercises; // Otherwise, use the default plan
+
+        exercisesToLoad.forEach(ex => {
             exercisesCopy[ex.id] = {};
             const numSets = ex.sets || (ex.type === 'cardio' ? 1 : 0);
             for (let i = 0; i < numSets; i++) {
@@ -624,14 +648,22 @@
         const checkLibraries = () => {
           if (typeof window.Chart !== 'undefined' && typeof window.ChartAnnotation !== 'undefined') {
             setIsChartJsLoaded(true);
-            console.log("Chart.js and Annotation plugin loaded successfully.");
           } else {
-            console.warn("Waiting for Chart.js and Annotation plugin to load...");
             setTimeout(checkLibraries, 100); // Retry after a short delay
           }
         };
         checkLibraries(); // Initial check
       }, []);
+
+      // Effect for highlighting
+      useEffect(() => {
+        if (highlightedDate) {
+          const timer = setTimeout(() => {
+            setHighlightedDate(null);
+          }, 20000); // 20 seconds
+          return () => clearTimeout(timer);
+        }
+      }, [highlightedDate]);
 
 
       // Daily quote effect
@@ -682,14 +714,16 @@
         const dateKey = formatDate(selectedDate);
         const updatedAllData = { ...allWorkoutData };
 
-        // Get the current day's planned exercises (from custom or default plan)
-        const plannedExercisesForDay = allWorkoutData[dateKey]?.exercises || WORKOUT_PLANS[selectedPlanId]?.schedule[getDayName(selectedDate)] || [];
+        // The exercises for the day are already managed by dailyExercisesState and workoutsForSelectedDay
+        // We need to ensure that if a day was customized, its 'exercises' array in allWorkoutData is kept.
+        // If it was not customized, we don't need to explicitly save the default exercises.
+        const currentDayPlannedExercises = WORKOUT_PLANS[selectedPlanId]?.schedule[getDayName(selectedDate)] || [];
+        const exercisesToSave = workoutsForSelectedDay; // Use the actual exercises displayed/logged
 
-        // Construct the data for the current day
         const newDayData = {
-          steps: dailyStepsInput,
-          exercises: plannedExercisesForDay, // Keep the planned exercises for the day
-          ...dailyExercisesState // Merge the exercise-specific data
+          steps: dailyStepsInput, // steps from the state, will be saved when "Save Steps" is clicked
+          exercises: exercisesToSave, // Store the list of exercises for the day
+          ...dailyExercisesState // Merge the exercise-specific data (weights, completed status)
         };
 
         updatedAllData[dateKey] = newDayData;
@@ -703,6 +737,17 @@
         const updatedAllData = { ...allWorkoutData };
         if (!updatedAllData[dateKey]) updatedAllData[dateKey] = {};
         updatedAllData[dateKey].steps = dailyStepsInput;
+        // Preserve existing exercise data if any
+        if (allWorkoutData[dateKey]?.exercises) {
+            updatedAllData[dateKey].exercises = allWorkoutData[dateKey].exercises;
+        }
+        // Preserve existing exercise-specific data if any
+        Object.keys(allWorkoutData[dateKey] || {}).forEach(key => {
+            if (key !== 'steps' && key !== 'exercises') {
+                updatedAllData[dateKey][key] = allWorkoutData[dateKey][key];
+            }
+        });
+
         setAllWorkoutData(updatedAllData);
         localStorage.setItem('fitnessTrackerData', JSON.stringify(updatedAllData));
       }, [selectedDate, allWorkoutData, dailyStepsInput]);
@@ -740,7 +785,15 @@
       // Get workouts for the selected day: prioritize custom, then default plan
       const selectedDayName = getDayName(selectedDate);
       const dateKey = formatDate(selectedDate);
-      const workoutsForSelectedDay = allWorkoutData[dateKey]?.exercises || WORKOUT_PLANS[selectedPlanId]?.schedule[selectedDayName] || [];
+
+      const defaultPlannedWorkouts = WORKOUT_PLANS[selectedPlanId]?.schedule[selectedDayName] || [];
+      const customizedWorkouts = allWorkoutData[dateKey]?.exercises;
+
+      // If customizedWorkouts is explicitly an array (even empty), use it.
+      // Otherwise, fall back to the default plan.
+      const workoutsForSelectedDay = (Array.isArray(customizedWorkouts))
+        ? customizedWorkouts
+        : defaultPlannedWorkouts;
 
       // Calculate previous week's corresponding date for auto-fill
       const prevWeekDate = addDays(selectedDate, -7);
@@ -751,11 +804,15 @@
 
       // Get the workout type for the currently selected day to display at the top
       const currentDayWorkoutType = (() => {
-          if (allWorkoutData[dateKey] && allWorkoutData[dateKey].exercises && allWorkoutData[dateKey].exercises.length > 0) {
+          const customizedExercises = allWorkoutData[dateKey]?.exercises;
+          const hasCustomExercises = Array.isArray(customizedExercises) && customizedExercises.length > 0;
+          const wasCustomizedButEmpty = Array.isArray(customizedExercises) && customizedExercises.length === 0;
+
+          if (hasCustomExercises) {
               return 'Custom Workout';
           }
           const plannedExercises = WORKOUT_PLANS[selectedPlanId]?.schedule[selectedDayName];
-          if (!plannedExercises || plannedExercises.length === 0) {
+          if (wasCustomizedButEmpty || !plannedExercises || plannedExercises.length === 0) {
               return 'Rest Day';
           }
           switch (selectedDayName) {
@@ -860,6 +917,7 @@
         setShowCustomizeModal(false);
         setSelectedDate(targetDate); // Automatically navigate to the target day
         setTargetMoveDay(''); // Reset target day selection
+        setHighlightedDate(targetDateKey); // Highlight the target day
       };
 
       // Handle swapping workouts between two days
@@ -912,7 +970,8 @@
         localStorage.setItem('fitnessTrackerData', JSON.stringify(updatedAllData));
         setShowCustomizeModal(false);
         setTargetMoveDay(''); // Reset target day selection
-        // No need to change selectedDate as both days are affected, user stays on current day
+        setSelectedDate(targetDate); // Navigate to the target day after swap
+        setHighlightedDate(targetDateKey); // Highlight the target day
       };
 
 
@@ -1062,6 +1121,7 @@
             workoutPlans={WORKOUT_PLANS}
             selectedPlanId={selectedPlanId}
             allWorkoutData={allWorkoutData}
+            highlightedDate={highlightedDate}
           />
 
           <section>
