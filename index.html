@@ -203,6 +203,24 @@
           const [showTimer, setShowTimer] = useState(false);
           const timerIntervalRef = useRef(null);
 
+          // Calculate daySummary for progress bar and set summary
+          const getDaySummary = () => {
+            let total = 0;
+            let completed = 0;
+            workoutsForToday.forEach(section => {
+              section.exercises.forEach(exercise => {
+                total += exercise.sets.length;
+                for (let i = 0; i < exercise.sets.length; i++) {
+                  if (workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${i}`] && workoutStatus[exercise.id][`set-${i}`].completed) {
+                    completed++;
+                  }
+                }
+              });
+            });
+            return { total, completed };
+          };
+          const daySummary = getDaySummary();
+
           // Load workout status from local storage on initial render or week change
           useEffect(() => {
             const loadWorkouts = () => {
