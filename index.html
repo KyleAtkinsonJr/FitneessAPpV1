@@ -8,27 +8,38 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts - Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <!-- PWA: Link to manifest.json -->
     <link rel="manifest" href="manifest.json">
     <style>
+        :root {
+            --bg-primary: #FEFEFE;
+            --text-primary: #293036;
+            --text-secondary: #94989A;
+            --border-input: #E0E0E0;
+            --accent-highlight: #DDDB61;
+            --accent-warning: #ED4C4C;
+            --ui-cool: #B6B9C8;
+            --label-muted: #64696D;
+        }
         body {
             font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
         }
-        @keyframes bounce-slow {
-          0%, 100% { transform: translateY(0);}
-          50% { transform: translateY(-5px);}
-        }
-        .animate-bounce-slow { animation: bounce-slow 2s infinite ease-in-out;}
+        .fade-in-up { animation: fade-in-up 0.5s ease-out forwards;}
         @keyframes fade-in-up {
           from { opacity: 0; transform: translateY(20px);}
           to { opacity: 1; transform: translateY(0);}
         }
-        .animate-fade-in-up { animation: fade-in-up 0.5s ease-out forwards;}
+        .bounce-slow { animation: bounce-slow 2s infinite ease-in-out;}
+        @keyframes bounce-slow {
+          0%, 100% { transform: translateY(0);}
+          50% { transform: translateY(-5px);}
+        }
+        .pulse { animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;}
         @keyframes pulse {
           0%, 100% { opacity: 1;}
           50% { opacity: 0.7;}
         }
-        .animate-pulse { animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;}
         input[type="number"]::-webkit-outer-spin-button,
         input[type="number"]::-webkit-inner-spin-button {
             -webkit-appearance: none;
@@ -37,7 +48,7 @@
         input[type="number"] { -moz-appearance: textfield;}
     </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-gray-100 to-blue-100 text-gray-900 font-inter p-4 sm:p-6 md:p-8">
+<body class="min-h-screen font-inter p-4 sm:p-6 md:p-8" style="background: var(--bg-primary); color: var(--text-primary);">
     <div id="root"></div>
 
     <!-- React and ReactDOM CDN -->
@@ -410,24 +421,24 @@
 
           // --- UI ---
           return (
-            <div className="min-h-screen bg-gradient-to-br from-gray-100 to-blue-100 text-gray-900 font-inter p-4 sm:p-6 md:p-8">
+            <div className="min-h-screen font-inter p-4 sm:p-6 md:p-8" style={{background: "var(--bg-primary)", color: "var(--text-primary)"}}>
               <div className="max-w-4xl mx-auto">
                 {/* Header */}
-                <h1 className="text-5xl font-extrabold text-center mb-8 text-blue-900 drop-shadow-lg">
-                  <span className="inline-block animate-bounce-slow">🏋️‍♀️</span> Fitness Tracker
+                <h1 className="text-5xl font-extrabold text-center mb-8" style={{color: "var(--text-primary)"}}>
+                  <span className="inline-block bounce-slow">🏋️‍♀️</span> Fitness Tracker
                 </h1>
 
                 {/* Motivation Quote */}
-                <div className="bg-white bg-opacity-80 rounded-2xl p-6 mb-8 shadow-xl border border-blue-100">
-                  <h2 className="text-2xl font-extrabold mb-3 text-center text-blue-500">Daily Motivation</h2>
-                  <p className="text-lg italic text-center leading-relaxed text-gray-700">
+                <div className="rounded-2xl p-6 mb-8 shadow-xl" style={{background: "var(--ui-cool)", border: "1px solid var(--border-input)"}}>
+                  <h2 className="text-2xl font-extrabold mb-3 text-center" style={{color: "var(--accent-highlight)"}}>Daily Motivation</h2>
+                  <p className="text-lg italic text-center leading-relaxed" style={{color: "var(--label-muted)"}}>
                     "{dailyQuote}"
                   </p>
                 </div>
 
                 {/* User Message/Error Display */}
                 {userMessage && (
-                  <div className="bg-red-500 bg-opacity-70 text-white p-3 rounded-lg mb-4 text-center shadow-md">
+                  <div className="rounded-lg mb-4 text-center shadow-md" style={{background: "var(--accent-warning)", color: "var(--bg-primary)"}}>
                     {userMessage}
                   </div>
                 )}
@@ -435,15 +446,16 @@
                 {/* Rest Timer */}
                 {showTimer && (
                   <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-                    <div className="bg-gradient-to-br from-blue-600 to-purple-700 rounded-2xl p-8 shadow-2xl text-white text-center border-4 border-blue-400 animate-fade-in-up">
-                      <h2 className="text-4xl font-extrabold mb-4">Rest Time!</h2>
-                      <div className="text-7xl font-extrabold mb-6 animate-pulse">
+                    <div className="rounded-2xl p-8 shadow-2xl text-center border-4 pulse" style={{background: "var(--ui-cool)", color: "var(--text-primary)", borderColor: "var(--accent-highlight)"}}>
+                      <h2 className="text-4xl font-extrabold mb-4" style={{color: "var(--accent-highlight)"}}>Rest Time!</h2>
+                      <div className="text-7xl font-extrabold mb-6 pulse" style={{color: "var(--accent-highlight)"}}>
                         {String(Math.floor(timer / 60)).padStart(2, '0')}:
                         {String(timer % 60).padStart(2, '0')}
                       </div>
                       <button
                         onClick={resetTimer}
-                        className="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
+                        className="font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 ease-in-out"
+                        style={{background: "var(--accent-warning)", color: "var(--bg-primary)"}}
                       >
                         Skip Rest
                       </button>
@@ -452,39 +464,41 @@
                 )}
 
                 {/* Week Navigation and Current Week Display */}
-                <div className="bg-white bg-opacity-80 rounded-xl p-4 mb-8 shadow-xl border border-blue-100 text-center">
+                <div className="rounded-xl p-4 mb-8 shadow-xl text-center" style={{background: "var(--bg-primary)", border: "1px solid var(--border-input)"}}>
                   <div className="flex items-center justify-between mb-4 gap-x-4">
                     <button
                       onClick={goToPreviousWeek}
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow transition duration-300 ease-in-out"
+                      className="font-bold py-2 px-4 rounded-full shadow transition duration-300 ease-in-out"
+                      style={{background: "var(--accent-highlight)", color: "var(--text-primary)"}}
                     >
                       &lt; Prev Week
                     </button>
-                    <h2 className="text-xl font-extrabold text-blue-500">Week: {selectedWeekId}</h2>
+                    <h2 className="text-xl font-extrabold" style={{color: "var(--accent-highlight)"}}>Week: {selectedWeekId}</h2>
                     <button
                       onClick={goToNextWeek}
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow transition duration-300 ease-in-out"
+                      className="font-bold py-2 px-4 rounded-full shadow transition duration-300 ease-in-out"
+                      style={{background: "var(--accent-highlight)", color: "var(--text-primary)"}}
                     >
                       Next Week &gt;
                     </button>
                   </div>
-                  <p className="text-lg">Viewing: <span className="font-bold text-blue-700">{selectedDate.toDateString()}</span></p>
+                  <p className="text-lg">Viewing: <span className="font-bold" style={{color: "var(--label-muted)"}}>{selectedDate.toDateString()}</span></p>
                 </div>
 
                 {/* Weekly Schedule with Swap */}
-                <div className="bg-white bg-opacity-80 rounded-xl p-5 mb-8 shadow-xl border border-blue-100">
-                  <h2 className="text-2xl font-extrabold mb-4 text-blue-700">Weekly Workout Schedule</h2>
+                <div className="rounded-xl p-5 mb-8 shadow-xl" style={{background: "var(--bg-primary)", border: "1px solid var(--border-input)"}}>
+                  <h2 className="text-2xl font-extrabold mb-4" style={{color: "var(--text-primary)"}}>Weekly Workout Schedule</h2>
                   <div className="overflow-x-auto">
                     <table className="min-w-full rounded-lg shadow-inner">
                       <thead>
-                        <tr className="bg-blue-100">
-                          <th className="py-3 px-4 text-left text-sm font-extrabold text-blue-700 rounded-tl-lg">Day</th>
-                          <th className="py-3 px-4 text-left text-sm font-extrabold text-blue-700 rounded-tr-lg">Workout</th>
+                        <tr style={{background: "var(--ui-cool)"}}>
+                          <th className="py-3 px-4 text-left text-sm font-extrabold rounded-tl-lg" style={{color: "var(--text-primary)"}}>Day</th>
+                          <th className="py-3 px-4 text-left text-sm font-extrabold rounded-tr-lg" style={{color: "var(--text-primary)"}}>Workout</th>
                         </tr>
                       </thead>
                       <tbody>
                         {customSchedule.map((item, idx) => (
-                          <tr key={idx} className={`transition-colors ${item.day === selectedDayName ? 'bg-blue-50' : ''}`}>
+                          <tr key={idx} className="transition-colors" style={item.day === selectedDayName ? {background: "var(--accent-highlight)", opacity: 0.15} : {}}>
                             <td className="py-3 px-4 text-base font-semibold">{item.day}</td>
                             <td className="py-3 px-4 text-base">{item.workout}</td>
                           </tr>
@@ -493,32 +507,35 @@
                     </table>
                   </div>
                   <button
-                    className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full shadow transition"
+                    className="mt-4 font-bold py-2 px-4 rounded-full shadow transition"
+                    style={{background: "var(--accent-highlight)", color: "var(--text-primary)"}}
                     onClick={openSwapModal}
                   >
                     Swap Workout/Cardio Days
                   </button>
                   {swapModalOpen && (
                     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-                      <div className="bg-white rounded-xl p-6 shadow-2xl text-gray-900 w-full max-w-xs border border-blue-200">
-                        <h3 className="font-bold mb-2 text-blue-700">Swap Days</h3>
-                        <select className="mb-2 w-full p-2 rounded border border-blue-200" value={swapDayA} onChange={e => setSwapDayA(e.target.value)}>
+                      <div className="rounded-xl p-6 shadow-2xl w-full max-w-xs" style={{background: "var(--bg-primary)", color: "var(--text-primary)", border: "1px solid var(--border-input)"}}>
+                        <h3 className="font-bold mb-2" style={{color: "var(--accent-highlight)"}}>Swap Days</h3>
+                        <select className="mb-2 w-full p-2 rounded border" style={{borderColor: "var(--border-input)", color: "var(--text-primary)"}} value={swapDayA} onChange={e => setSwapDayA(e.target.value)}>
                           <option value="">Select Day A</option>
                           {customSchedule.map(d => <option key={d.day} value={d.day}>{d.day}</option>)}
                         </select>
-                        <select className="mb-4 w-full p-2 rounded border border-blue-200" value={swapDayB} onChange={e => setSwapDayB(e.target.value)}>
+                        <select className="mb-4 w-full p-2 rounded border" style={{borderColor: "var(--border-input)", color: "var(--text-primary)"}} value={swapDayB} onChange={e => setSwapDayB(e.target.value)}>
                           <option value="">Select Day B</option>
                           {customSchedule.map(d => <option key={d.day} value={d.day}>{d.day}</option>)}
                         </select>
                         <button
-                          className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded mr-2"
+                          className="font-bold py-2 px-4 rounded mr-2"
+                          style={{background: "var(--accent-highlight)", color: "var(--text-primary)"}}
                           onClick={handleSwapDays}
                           disabled={!swapDayA || !swapDayB || swapDayA === swapDayB}
                         >
                           Swap
                         </button>
                         <button
-                          className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded"
+                          className="font-bold py-2 px-4 rounded"
+                          style={{background: "var(--ui-cool)", color: "var(--text-primary)"}}
                           onClick={closeSwapModal}
                         >
                           Cancel
@@ -529,25 +546,28 @@
                 </div>
 
                 {/* Daily Workout Navigation */}
-                <div className="bg-white bg-opacity-80 rounded-xl p-4 mb-8 shadow-xl border border-blue-100 text-center">
+                <div className="rounded-xl p-4 mb-8 shadow-xl text-center" style={{background: "var(--bg-primary)", border: "1px solid var(--border-input)"}}>
                   <div className="flex items-center justify-between mb-4 gap-x-4">
                     <button
                       onClick={goToPreviousDay}
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow transition"
+                      className="font-bold py-2 px-4 rounded-full shadow transition"
+                      style={{background: "var(--accent-highlight)", color: "var(--text-primary)"}}
                     >
                       &lt; Prev Day
                     </button>
-                    <h2 className="text-xl font-extrabold text-blue-500">Workouts for {selectedDayName}</h2>
+                    <h2 className="text-xl font-extrabold" style={{color: "var(--accent-highlight)"}}>Workouts for {selectedDayName}</h2>
                     <button
                       onClick={goToNextDay}
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow transition"
+                      className="font-bold py-2 px-4 rounded-full shadow transition"
+                      style={{background: "var(--accent-highlight)", color: "var(--text-primary)"}}
                     >
                       Next Day &gt;
                     </button>
                   </div>
                   <button
                     onClick={goToToday}
-                    className="mt-3 bg-blue-400 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded-full shadow transition"
+                    className="mt-3 font-bold py-2 px-6 rounded-full shadow transition"
+                    style={{background: "var(--ui-cool)", color: "var(--text-primary)"}}
                   >
                     Go to Today
                   </button>
@@ -556,20 +576,29 @@
                 {/* Display Workouts for the Selected Day */}
                 {workoutsForToday.length > 0 ? (
                   workoutsForToday.map((section, sectionIndex) => (
-                    <div key={sectionIndex} className="bg-white bg-opacity-80 rounded-xl p-5 mb-8 shadow-xl border border-blue-100">
-                      <h2 className="text-2xl font-extrabold mb-4 text-blue-700">{section.category}</h2>
-                      <h3 className="text-xl font-extrabold mb-3 text-blue-400">{section.dayName}</h3>
+                    <div key={sectionIndex} className="rounded-xl p-5 mb-8 shadow-xl" style={{background: "var(--bg-primary)", border: "1px solid var(--border-input)"}}>
+                      <h2 className="text-2xl font-extrabold mb-4" style={{color: "var(--text-primary)"}}>{section.category}</h2>
+                      <h3 className="text-xl font-extrabold mb-3" style={{color: "var(--accent-highlight)"}}>{section.dayName}</h3>
                       <ul className="space-y-3">
                         {section.exercises.map((exercise) => (
-                          <li key={exercise.id} className={`flex flex-col sm:flex-row items-start sm:items-center justify-between bg-blue-50 rounded-lg p-3 shadow-sm hover:bg-blue-100 transition-colors ${areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'border-l-4 border-blue-400' : ''}`}>
+                          <li key={exercise.id} className={`flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-lg p-3 shadow-sm hover:bg-[var(--ui-cool)] transition-colors border-l-4 animate-fade-in-up`}
+                            style={{
+                              background: "var(--ui-cool)",
+                              borderColor: areAllSetsCompleted(exercise.id, exercise.sets.length) ? "var(--accent-highlight)" : "var(--ui-cool)"
+                            }}>
                             <div className="flex items-center flex-grow mb-2 sm:mb-0">
-                              <span className={`text-lg font-semibold ${areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'line-through text-gray-400' : 'text-blue-900'}`}>
+                              <span className={`text-lg font-semibold flex items-center gap-2 ${areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'line-through' : ''}`}
+                                style={{color: areAllSetsCompleted(exercise.id, exercise.sets.length) ? "var(--label-muted)" : "var(--text-primary)"}}>
                                 {exercise.name}
+                                {areAllSetsCompleted(exercise.id, exercise.sets.length) && (
+                                  <span className="ml-2 px-2 py-1 rounded-full pulse" style={{background: "var(--accent-highlight)", color: "var(--text-primary)", fontSize: "0.8rem"}}>Done!</span>
+                                )}
                               </span>
                             </div>
                             <div className="flex items-center flex-wrap gap-2 sm:ml-4">
                               {exercise.sets.map((set, setIndex) => (
-                                <div key={setIndex} className="flex items-center bg-white bg-opacity-90 text-blue-900 text-sm font-bold py-2 px-3 rounded-md shadow transition duration-200 ease-in-out">
+                                <div key={setIndex} className="flex items-center rounded-md shadow transition duration-200 ease-in-out hover:scale-105 hover:shadow-lg"
+                                  style={{background: "var(--bg-primary)", color: "var(--text-primary)", border: "1px solid var(--border-input)", padding: "0.5rem 0.75rem"}}>
                                   <div className="flex flex-col items-center">
                                     <label htmlFor={`${exercise.id}-set-${setIndex}-${selectedWeekId}-weight`} className="sr-only">Weight for Set {setIndex + 1}</label>
                                     <input
@@ -578,23 +607,30 @@
                                       placeholder="Weight"
                                       value={(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].weight) || ''}
                                       onChange={(e) => handleSetDataChange(exercise.id, setIndex, 'weight', e.target.value)}
-                                      className="w-20 p-1 rounded-md text-blue-900 bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-300 text-center mb-1"
+                                      className="w-20 p-1 rounded-md text-center mb-1 transition duration-200"
+                                      style={{
+                                        background: "var(--ui-cool)",
+                                        color: "var(--text-primary)",
+                                        border: "1px solid var(--border-input)"
+                                      }}
                                       min="0"
                                     />
                                     {/* Previous week metrics */}
                                     {previousWeekStatus[exercise.id] && previousWeekStatus[exercise.id][`set-${setIndex}`] && (
-                                      <span className="text-xs text-blue-400 mt-1">
-                                        Last week: {previousWeekStatus[exercise.id][`set-${setIndex}`].weight || '—'} kg, {previousWeekStatus[exercise.id][`set-${setIndex}`].reps || set.reps} reps
+                                      <span className="text-xs mt-1" style={{color: "var(--text-secondary)", fontStyle: "italic"}}>
+                                        Last week: <span style={{fontWeight: "bold"}}>{previousWeekStatus[exercise.id][`set-${setIndex}`].weight || '—'} kg</span>, <span style={{fontWeight: "bold"}}>{previousWeekStatus[exercise.id][`set-${setIndex}`].reps || set.reps} reps</span>
                                       </span>
                                     )}
-                                    <span className="mb-1 text-gray-500">Set {setIndex + 1} ({set.reps})</span>
+                                    <span className="mb-1" style={{color: "var(--label-muted)"}}>Set {setIndex + 1} ({set.reps})</span>
                                     <button
                                         onClick={() => handleConfirmSet(exercise.id, setIndex)}
-                                        className={`py-1 px-3 rounded-full text-xs font-bold transition duration-200 ease-in-out
-                                            ${(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].completed)
-                                                ? 'bg-blue-400 hover:bg-blue-500 text-white'
-                                                : 'bg-gray-200 hover:bg-gray-300 text-blue-900'
-                                            }`}
+                                        className="py-1 px-3 rounded-full text-xs font-bold transition duration-200 ease-in-out"
+                                        style={{
+                                          background: (workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].completed)
+                                            ? "var(--accent-highlight)"
+                                            : "var(--ui-cool)",
+                                          color: "var(--text-primary)"
+                                        }}
                                     >
                                         {(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].completed) ? 'Completed' : 'Confirm Set'}
                                     </button>
@@ -606,7 +642,8 @@
                                   href={exercise.videoUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="ml-2 p-2 rounded-full bg-blue-400 hover:bg-blue-500 text-white shadow-md transition duration-200 ease-in-out transform hover:scale-110"
+                                  className="ml-2 p-2 rounded-full shadow-md transition duration-200 ease-in-out transform hover:scale-110"
+                                  style={{background: "var(--accent-highlight)", color: "var(--text-primary)"}}
                                   aria-label={`Watch video for ${exercise.name}`}
                                 >
                                   <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
@@ -621,20 +658,18 @@
                     </div>
                   ))
                 ) : (
-                  <div className="bg-white bg-opacity-80 rounded-xl p-5 mb-8 shadow-xl border border-blue-100 text-center">
-                    <p className="text-lg text-blue-700">No specific workouts scheduled for {selectedDayName} in this week.</p>
+                  <div className="rounded-xl p-5 mb-8 shadow-xl text-center" style={{background: "var(--bg-primary)", border: "1px solid var(--border-input)"}}>
+                    <p className="text-lg" style={{color: "var(--text-secondary)"}}>No specific workouts scheduled for {selectedDayName} in this week.</p>
                   </div>
                 )}
 
                 {/* Footer */}
-                <div className="text-center text-gray-400 text-sm mt-8">
+                <div className="text-center text-sm mt-8" style={{color: "var(--label-muted)"}}>
                   <p>&copy; 2025 Fitness Tracker. All rights reserved.</p>
                 </div>
               </div>
             </div>
-          );
-        };
-
+        );
         // Render the React app
         const container = document.getElementById('root');
         const root = createRoot(container);
