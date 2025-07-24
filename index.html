@@ -7,66 +7,309 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="data:," />
   <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 text-gray-900 font-sans">
-  <div id="root" class="max-w-2xl mx-auto p-4"></div>
+  <style>
+    /* Custom styles for the timer and general aesthetics */
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .timer-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 8px;
+      font-weight: bold;
+      color: #ef4444; /* Red for active timer */
+    }
+    .timer-container.hidden {
+      display: none;
+    }
+    .timer-circle {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background-color: #ef4444;
+      margin-right: 8px;
+      animation: pulse 1s infinite alternate;
+    }
+    @keyframes pulse {
+      from { transform: scale(0.8); opacity: 0.7; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .arrow-icon {
+      margin-left: 4px;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .arrow-up { color: #22c55e; } /* green-500 */
+    .arrow-down { color: #ef4444; } /* red-500 */
+    .arrow-same { color: #6b7280; } /* gray-500 */
 
+    /* Modal styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .modal-content {
+      background: white;
+      padding: 2rem;
+      border-radius: 1rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      max-width: 500px;
+      width: 90%;
+      position: relative;
+    }
+    .modal-close-button {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 text-gray-900 font-sans min-h-screen flex items-center justify-center py-8">
+  <div id="root" class="w-full max-w-3xl mx-auto p-4"></div>
+
+  <!-- React, ReactDOM (development-only for `createRoot`) -->
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <script type="text/babel">
-    const { useState, useEffect } = React;
-    const createRoot = ReactDOM.createRoot; // FIX: Correctly access createRoot
+    const { useState, useEffect, useCallback } = React;
+    const createRoot = ReactDOM.createRoot;
 
+    // --- Utility Functions ---
+    const getWeekNumber = (date) => {
+      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    };
+
+    const formatDate = (date) => date.toISOString().split('T')[0]; // YYYY-MM-DD
+    const getDayName = (date) => {
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      return days[date.getDay()];
+    };
+
+    const getStartOfWeek = (date) => {
+      const d = new Date(date);
+      const day = d.getDay(); // 0 for Sunday, 1 for Monday
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
+      return new Date(d.setDate(diff));
+    };
+
+    const addDays = (date, days) => {
+      const result = new Date(date);
+      result.setDate(result.getDate() + days);
+      return result;
+    };
+
+    // --- Constants ---
     const MOTIVATION_QUOTES = [
       "The only bad workout is the one that didn't happen.",
       "Push yourself because no one else is going to do it for you.",
       "Success is earned one rep at a time.",
+      "Believe you can and you're halfway there.",
+      "The body achieves what the mind believes.",
+      "Strength does not come from physical capacity. It comes from an indomitable will.",
+      "Your body can stand almost anything. It's your mind that you have to convince.",
+      "The pain you feel today will be the strength you feel tomorrow."
     ];
 
-    const today = new Date().toISOString().split("T")[0];
-    const getWeekNumber = (date) => {
-      const d = new Date(date.getTime());
-      d.setHours(0, 0, 0, 0);
-      d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
-      const week1 = new Date(d.getFullYear(), 0, 4);
-      return 1 + Math.round(((d - week1) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
+    // Defined workout plans for women: weight loss and glute building focus
+    const WORKOUT_PLANS = {
+      'glute_weightloss_plan_1': {
+        name: 'Glute & Weight Loss (Plan A)',
+        description: 'Balanced plan with strong glute focus and integrated cardio for fat loss.',
+        schedule: {
+          'Mon': [ // Lower Body & Glute Focus A
+            { id: 'barbell-hip-thrusts', name: 'Barbell Hip Thrusts', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=ultWZbPWptQ' },
+            { id: 'dumbbell-rdls', name: 'Dumbbell Romanian Deadlifts', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=JCXUYpvImJk' },
+            { id: 'goblet-squats', name: 'Goblet Squats', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=MeW7lG0w-bI' },
+            { id: 'cable-glute-kickbacks', name: 'Cable Glute Kickbacks', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=J3yB_d91L4Y' },
+            { id: 'optional-cardio-mon', name: 'Optional Cardio', duration: '30 min Moderate Intensity', type: 'cardio' }
+          ],
+          'Tue': [ // Upper Body Push & Core
+            { id: 'incline-pushups', name: 'Incline Push-ups', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=IODxDxX7oi4' },
+            { id: 'dumbbell-shoulder-press', name: 'Dumbbell Shoulder Press', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=qEwKCR5JCKE' },
+            { id: 'dumbbell-chest-press', name: 'Dumbbell Chest Press', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=VmB1G1K7QoU' },
+            { id: 'tricep-extensions', name: 'Overhead Tricep Extensions (Dumbbell)', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=nRIqU_g1b5U' },
+            { id: 'plank', name: 'Plank', sets: 3, duration: '30-60 sec hold', videoUrl: 'https://www.youtube.com/watch?v=p35_S284G00' },
+            { id: 'optional-cardio-tue', name: 'Optional Cardio', duration: '30 min Moderate Intensity', type: 'cardio' }
+          ],
+          'Wed': [ // Dedicated Cardio / Active Recovery
+            { id: 'elliptical-cardio', name: 'Elliptical / Brisk Walk', duration: '45-60 min Steady State', type: 'cardio' }
+          ],
+          'Thu': [ // Lower Body & Glute Focus B
+            { id: 'bulgarian-split-squats', name: 'Bulgarian Split Squats (Dumbbell)', sets: 3, reps: 8, videoUrl: 'https://www.youtube.com/watch?v=2C-uNgKwMLE' },
+            { id: 'cable-pull-throughs', name: 'Cable Pull-Throughs', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=H7mYm33zWpE' },
+            { id: 'leg-press', name: 'Leg Press', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=IZxyjW7MPJQ' },
+            { id: 'seated-calf-raises', name: 'Seated Calf Raises', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=GA9f_R8V8cQ' },
+            { id: 'optional-cardio-thu', name: 'Optional Cardio', duration: '30 min Moderate Intensity', type: 'cardio' }
+          ],
+          'Fri': [ // Upper Body Pull & Arms
+            { id: 'lat-pulldowns', name: 'Lat Pulldowns', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=0G_s72l1e5s' },
+            { id: 'dumbbell-rows', name: 'Bent-Over Dumbbell Rows', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=vT2Gf5j4_68' },
+            { id: 'face-pulls', name: 'Face Pulls', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=v3P4m255-bM' },
+            { id: 'bicep-curls', name: 'Bicep Curls (Dumbbell)', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=s_pW2K1zQ6g' },
+            { id: 'optional-cardio-fri', name: 'Optional Cardio', duration: '30 min Moderate Intensity', type: 'cardio' }
+          ],
+          'Sat': [ // Full Body Circuit / Active Recovery
+            { id: 'bodyweight-squats', name: 'Bodyweight Squats', sets: 3, reps: 20, videoUrl: 'https://www.youtube.com/watch?v=C_VtbuFfJ9I' },
+            { id: 'walking-lunges', name: 'Walking Lunges', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=QO8wH0P9W5Q' },
+            { id: 'jumping-jacks', name: 'Jumping Jacks', sets: 3, duration: '60 sec', type: 'cardio' },
+            { id: 'mountain-climbers', name: 'Mountain Climbers', sets: 3, duration: '60 sec', type: 'cardio' }
+          ],
+          'Sun': [] // Rest day
+        }
+      },
+      'glute_weightloss_plan_2': {
+        name: 'Glute & Weight Loss (Plan B)',
+        description: 'Alternative plan with different exercise variations for continued progress.',
+        schedule: {
+          'Mon': [ // Lower Body & Glute Focus A (Variation)
+            { id: 'glute-bridges', name: 'Dumbbell Glute Bridges', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=v-g_k-8x_i4' },
+            { id: 'sumo-squats', name: 'Dumbbell Sumo Squats', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=x7g2Yg2yQxQ' },
+            { id: 'reverse-hyperextensions', name: 'Reverse Hyperextensions (Bench)', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=eYfKx9B09-0' },
+            { id: 'banded-lateral-walks', name: 'Banded Lateral Walks', sets: 3, duration: '10-15 steps each side', videoUrl: 'https://www.youtube.com/watch?v=X2h2-1L-LpM' },
+            { id: 'optional-cardio-mon2', name: 'Optional Cardio', duration: '30 min Moderate Intensity', type: 'cardio' }
+          ],
+          'Tue': [ // Upper Body Push & Core (Variation)
+            { id: 'dumbbell-incline-press', name: 'Dumbbell Incline Press', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=0k_y2YgY0gI' },
+            { id: 'arnold-press', name: 'Arnold Press', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=qEwKCR5JCKE' },
+            { id: 'cable-flyes', name: 'Cable Flyes', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=Z5CYoN9aVq8' },
+            { id: 'ab-crunches', name: 'Ab Crunches', sets: 3, reps: 20, videoUrl: 'https://www.youtube.com/watch?v=Xyd_fa5zo6M' },
+            { id: 'optional-cardio-tue2', name: 'Optional Cardio', duration: '30 min Moderate Intensity', type: 'cardio' }
+          ],
+          'Wed': [ // Dedicated Cardio / HIIT
+            { id: 'hiit-sprints', name: 'HIIT Sprints (Treadmill/Bike)', duration: '20-30 min Intervals', type: 'cardio' }
+          ],
+          'Thu': [ // Lower Body & Glute Focus B (Variation)
+            { id: 'step-ups', name: 'Dumbbell Step-ups', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=ultWZbPWptQ' },
+            { id: 'single-leg-rdls', name: 'Single-Leg RDLs (Dumbbell)', sets: 3, reps: 8, videoUrl: 'https://www.youtube.com/watch?v=ultWZbPWptQ' },
+            { id: 'hyperextensions', name: 'Hyperextensions (Back Extension)', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=ph3pddpKzzw' },
+            { id: 'donkey-kicks', name: 'Donkey Kicks (Banded)', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=I67-dJj1N3Q' },
+            { id: 'optional-cardio-thu2', name: 'Optional Cardio', duration: '30 min Moderate Intensity', type: 'cardio' }
+          ],
+          'Fri': [ // Upper Body Pull & Arms (Variation)
+            { id: 'seated-cable-rows', name: 'Seated Cable Rows', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=ultWZbPWptQ' },
+            { id: 'pull-aparts', name: 'Banded Face Pulls / Pull-Aparts', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=v3P4m255-bM' },
+            { id: 'hammer-curls', name: 'Hammer Curls', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=ultWZbPWptQ' },
+            { id: 'tricep-pushdowns', name: 'Tricep Pushdowns (Cable)', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=ultWZbPWptQ' },
+            { id: 'optional-cardio-fri2', name: 'Optional Cardio', duration: '30 min Moderate Intensity', type: 'cardio' }
+          ],
+          'Sat': [ // Active Recovery / Longer Cardio
+            { id: 'yoga-stretch', name: 'Yoga / Stretching', duration: '30-45 min', type: 'cardio' },
+            { id: 'long-walk', name: 'Long Walk', duration: '60 min', type: 'cardio' }
+          ],
+          'Sun': [] // Rest day
+        }
+      }
     };
-    const week = getWeekNumber(new Date());
-    const currentWeekKey = `week-${week}`;
-    const previousWeekKey = `week-${week - 1}`;
 
-    const WORKOUTS = [
-      { id: 'squats', name: 'Squats', sets: 3, reps: 12 },
-      { id: 'pushups', name: 'Push-ups', sets: 3, reps: 15 }
-    ];
+    // --- Calendar Component ---
+    const Calendar = ({ currentWeekStart, selectedDate, onSelectDay, onPrevWeek, onNextWeek }) => {
+      const days = [];
+      let currentDay = new Date(currentWeekStart);
 
+      for (let i = 0; i < 7; i++) {
+        const day = new Date(currentDay);
+        const isSelected = formatDate(day) === formatDate(selectedDate);
+        const today = formatDate(new Date()) === formatDate(day);
+
+        days.push(
+          <button
+            key={i}
+            onClick={() => onSelectDay(day)}
+            className={`flex flex-col items-center p-2 rounded-xl transition-all duration-300 transform hover:scale-105
+              ${isSelected ? 'bg-blue-600 text-white shadow-lg' : 'bg-white text-gray-700 hover:bg-blue-50 shadow-md'}
+              ${today && !isSelected ? 'border-2 border-blue-400 text-blue-700 font-bold' : ''}
+            `}
+          >
+            <span className="text-xs font-semibold">{getDayName(day)}</span>
+            <span className="text-lg font-bold">{day.getDate()}</span>
+          </button>
+        );
+        currentDay = addDays(currentDay, 1);
+      }
+
+      return (
+        <div className="flex items-center justify-between mb-6 bg-white p-4 rounded-2xl shadow-xl border border-blue-100">
+          <button
+            onClick={onPrevWeek}
+            className="p-3 rounded-full bg-blue-100 hover:bg-blue-200 transition-colors duration-200 shadow-sm hover:shadow-md"
+            aria-label="Previous week"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <div className="flex-1 grid grid-cols-7 gap-2 text-center mx-2">
+            {days}
+          </div>
+          <button
+            onClick={onNextWeek}
+            className="p-3 rounded-full bg-blue-100 hover:bg-blue-200 transition-colors duration-200 shadow-sm hover:shadow-md"
+            aria-label="Next week"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      );
+    };
+
+    // --- App Component ---
     const App = () => {
+      const today = new Date();
       const [quote, setQuote] = useState('');
-      const [data, setData] = useState(() => {
+      const [selectedDate, setSelectedDate] = useState(today);
+      const [currentWeekStart, setCurrentWeekStart] = useState(getStartOfWeek(today));
+      const [showCustomizeModal, setShowCustomizeModal] = useState(false);
+
+      // State to hold the currently selected workout plan ID
+      const [selectedPlanId, setSelectedPlanId] = useState(() => {
         try {
-          return JSON.parse(localStorage.getItem(currentWeekKey) || '{}');
+          return localStorage.getItem('selectedFitnessPlan') || 'glute_weightloss_plan_1';
         } catch (e) {
-          console.error("Error parsing current week data from localStorage:", e);
-          return {};
+          console.error("Error loading selected plan from localStorage:", e);
+          return 'glute_weightloss_plan_1';
         }
       });
-      const [prevData, setPrevData] = useState(() => {
+
+      // Data structure: { "YYYY-MM-DD": { "exerciseId": { "set-0": { weight: 70, completed: true, timer: 0 } } } }
+      const [allWorkoutData, setAllWorkoutData] = useState(() => {
         try {
-          return JSON.parse(localStorage.getItem(previousWeekKey) || '{}');
+          return JSON.parse(localStorage.getItem('fitnessTrackerData') || '{}');
         } catch (e) {
-          console.error("Error parsing previous week data from localStorage:", e);
+          console.error("Error parsing fitnessTrackerData from localStorage:", e);
           return {};
         }
       });
 
+      // Daily quote effect
       useEffect(() => {
         const savedDate = localStorage.getItem("quote-date");
         const savedQuote = localStorage.getItem("quote-text");
-        if (savedDate !== today || !savedQuote) {
+        const formattedToday = formatDate(new Date());
+
+        if (savedDate !== formattedToday || !savedQuote) {
           const newQuote = MOTIVATION_QUOTES[Math.floor(Math.random() * MOTIVATION_QUOTES.length)];
-          localStorage.setItem("quote-date", today);
+          localStorage.setItem("quote-date", formattedToday);
           localStorage.setItem("quote-text", newQuote);
           setQuote(newQuote);
         } else {
@@ -74,63 +317,296 @@
         }
       }, []);
 
-      const updateSet = (exerciseId, setIndex, field, value) => {
-        const updated = { ...data };
-        if (!updated[exerciseId]) updated[exerciseId] = {};
-        if (!updated[exerciseId][`set-${setIndex}`]) {
-          updated[exerciseId][`set-${setIndex}`] = { weight: '', completed: false };
+      // Function to update a set's data
+      const updateSet = useCallback((exerciseId, setIndex, field, value) => {
+        const dateKey = formatDate(selectedDate);
+        const updatedAllData = { ...allWorkoutData };
+
+        if (!updatedAllData[dateKey]) updatedAllData[dateKey] = {};
+        if (!updatedAllData[dateKey][exerciseId]) updatedAllData[dateKey][exerciseId] = {};
+        if (!updatedAllData[dateKey][exerciseId][`set-${setIndex}`]) {
+          updatedAllData[dateKey][exerciseId][`set-${setIndex}`] = { weight: '', completed: false, timer: 0 };
         }
-        updated[exerciseId][`set-${setIndex}`][field] =
-          field === 'completed' ? value : Number(value);
-        setData(updated);
-        localStorage.setItem(currentWeekKey, JSON.stringify(updated));
+
+        const currentSetData = updatedAllData[dateKey][exerciseId][`set-${setIndex}`];
+
+        if (field === 'completed') {
+          currentSetData.completed = value;
+          if (value) {
+            // Start timer if completed
+            currentSetData.timer = 60; // Set initial timer value
+          } else {
+            currentSetData.timer = 0; // Reset timer if unchecked
+          }
+        } else if (field === 'weight') {
+          currentSetData.weight = Number(value);
+        } else if (field === 'timer') {
+          currentSetData.timer = value;
+        }
+
+        setAllWorkoutData(updatedAllData);
+        localStorage.setItem('fitnessTrackerData', JSON.stringify(updatedAllData));
+      }, [selectedDate, allWorkoutData]);
+
+      // Timer effect
+      useEffect(() => {
+        const dateKey = formatDate(selectedDate);
+        const currentDayData = allWorkoutData[dateKey] || {};
+        let timerIntervals = [];
+
+        Object.keys(currentDayData).forEach(exerciseId => {
+          Object.keys(currentDayData[exerciseId]).forEach(setKey => {
+            const setIndex = parseInt(setKey.replace('set-', ''));
+            const setData = currentDayData[exerciseId][setKey];
+
+            if (setData.completed && setData.timer > 0) {
+              const interval = setInterval(() => {
+                updateSet(exerciseId, setIndex, 'timer', setData.timer - 1);
+              }, 1000);
+              timerIntervals.push(interval);
+            }
+          });
+        });
+
+        return () => {
+          timerIntervals.forEach(clearInterval);
+        };
+      }, [allWorkoutData, selectedDate, updateSet]);
+
+
+      // Calendar navigation handlers
+      const goToPreviousWeek = () => {
+        setCurrentWeekStart(prev => addDays(prev, -7));
+        setSelectedDate(prev => addDays(prev, -7)); // Also jump selected date
+      };
+
+      const goToNextWeek = () => {
+        setCurrentWeekStart(prev => addDays(prev, 7));
+        setSelectedDate(prev => addDays(prev, 7)); // Also jump selected date
+      };
+
+      const handleSelectDay = (date) => {
+        setSelectedDate(date);
+      };
+
+      // Get workouts for the selected day based on the active plan
+      const selectedDayName = getDayName(selectedDate);
+      const workoutsForSelectedDay = WORKOUT_PLANS[selectedPlanId]?.schedule[selectedDayName] || [];
+      const currentDayData = allWorkoutData[formatDate(selectedDate)] || {};
+
+      // Calculate previous week's corresponding date for auto-fill
+      const prevWeekDate = addDays(selectedDate, -7);
+      const prevWeekData = allWorkoutData[formatDate(prevWeekDate)] || {};
+
+      const currentWeekNumber = getWeekNumber(currentWeekStart);
+      const currentYear = currentWeekStart.getFullYear();
+
+      // Handle plan selection in modal
+      const handlePlanSelect = (planId) => {
+        setSelectedPlanId(planId);
+        localStorage.setItem('selectedFitnessPlan', planId);
+        setShowCustomizeModal(false); // Close modal after selection
       };
 
       return (
-        <main className="bg-white rounded-xl shadow-md p-6 space-y-6">
-          <h1 className="text-3xl font-bold text-center">🏋️ Fitness Tracker</h1>
-          <div className="text-center bg-blue-100 text-blue-800 px-4 py-3 rounded">
+        <main className="bg-white rounded-3xl shadow-2xl p-6 space-y-6 border-4 border-blue-200">
+          <h1 className="text-4xl font-extrabold text-center text-blue-700 mb-4">
+            💪 EmpowerFit Tracker
+          </h1>
+          <div className="text-center bg-green-100 text-green-800 px-6 py-4 rounded-xl shadow-inner text-lg font-medium italic">
             “{quote}”
           </div>
 
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold text-gray-800">
+              Week {currentWeekNumber} of {currentYear}
+            </h2>
+            <button
+              onClick={() => setShowCustomizeModal(true)}
+              className="px-4 py-2 bg-purple-500 text-white rounded-full shadow-md hover:bg-purple-600 transition-colors duration-200 text-sm"
+            >
+              Customize Plan
+            </button>
+          </div>
+
+          <Calendar
+            currentWeekStart={currentWeekStart}
+            selectedDate={selectedDate}
+            onSelectDay={handleSelectDay}
+            onPrevWeek={goToPreviousWeek}
+            onNextWeek={goToNextWeek}
+          />
+
           <section>
-            <h2 className="text-xl font-semibold mb-2">Today's Workout</h2>
-            {WORKOUTS.map(ex => (
-              <div key={ex.id} className="mb-4 border-b pb-2">
-                <h3 className="font-medium">{ex.name} — {ex.reps} reps x {ex.sets} sets</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
-                  {Array.from({ length: ex.sets }).map((_, i) => {
-                    const current = data[ex.id]?.[`set-${i}`] || {};
-                    const previous = prevData[ex.id]?.[`set-${i}`] || {};
-                    return (
-                      <div key={i} className="border p-2 rounded space-y-1 text-sm">
-                        <label className="block font-medium">Set {i + 1}</label>
+            <h2 className="text-2xl font-bold mb-4 text-gray-800">
+              Workout for {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </h2>
+            <p className="text-gray-600 text-sm mb-4">
+              Current Plan: <span className="font-semibold text-blue-700">{WORKOUT_PLANS[selectedPlanId]?.name}</span>
+            </p>
+
+            {workoutsForSelectedDay.length === 0 ? (
+              <p className="text-gray-500 text-center py-6 text-lg bg-gray-50 rounded-lg shadow-inner">
+                No planned workouts for this day. Enjoy your well-deserved rest!
+              </p>
+            ) : (
+              workoutsForSelectedDay.map(ex => (
+                <div key={ex.id} className="mb-6 pb-4 border-b border-blue-100 last:border-b-0">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-bold text-xl text-blue-800">{ex.name}</h3>
+                    {ex.videoUrl && (
+                      <a
+                        href={ex.videoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 text-sm flex items-center bg-blue-50 px-3 py-1 rounded-full shadow-sm hover:shadow-md transition-all duration-200"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197 2.132A1 1 0 0110 13.82V10.18a1 1 0 011.555-.832l3.197 2.132a1 1 0 010 1.664z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Watch Demo
+                      </a>
+                    )}
+                  </div>
+
+                  {ex.sets && ex.reps && (
+                    <p className="text-gray-600 text-base mb-3">{ex.reps} reps x {ex.sets} sets</p>
+                  )}
+                  {ex.duration && (
+                    <p className="text-gray-600 text-base mb-3">Duration: {ex.duration}</p>
+                  )}
+
+                  {/* Define current and previous data for the exercise outside the conditional rendering of sets/cardio */}
+                  {/* This ensures 'currentExData' and 'previousExData' are always defined for the exercise block */}
+                  {(() => {
+                    const currentExData = currentDayData[ex.id] || {};
+                    const previousExData = prevWeekData[ex.id] || {};
+
+                    if (ex.type === 'cardio') {
+                      const currentSet = currentExData['set-0'] || {};
+                      return (
+                        <div className="border border-green-200 p-4 rounded-lg space-y-2 text-sm bg-green-50 shadow-sm">
+                          <label className="inline-flex items-center text-gray-700 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              className="form-checkbox h-5 w-5 text-green-600 rounded focus:ring-green-500 mr-2"
+                              checked={currentSet.completed || false}
+                              onChange={(e) => updateSet(ex.id, 0, 'completed', e.target.checked)}
+                            />
+                            Completed Cardio
+                          </label>
+                          {currentSet.completed && currentSet.timer > 0 && (
+                            <div className="timer-container">
+                              <div className="timer-circle"></div>
+                              <span>Rest: {currentSet.timer}s</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    } else if (ex.sets) {
+                      return (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
+                          {Array.from({ length: ex.sets }).map((_, i) => {
+                            const currentSet = currentExData[`set-${i}`] || {};
+                            const previousSet = previousExData[`set-${i}`] || {};
+
+                            // Auto-fill weight if current is empty and previous exists
+                            const initialWeight = currentSet.weight ?? (previousSet.weight || '');
+
+                            // Determine weight comparison icon
+                            let weightComparisonIcon = null;
+                            if (currentSet.weight !== undefined && previousSet.weight !== undefined && previousSet.weight !== '') {
+                              if (currentSet.weight > previousSet.weight) {
+                                weightComparisonIcon = <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 arrow-icon arrow-up" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>;
+                              } else if (currentSet.weight < previousSet.weight) {
+                                weightComparisonIcon = <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 arrow-icon arrow-down" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>;
+                              } else {
+                                weightComparisonIcon = <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 arrow-icon arrow-same" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" /></svg>;
+                              }
+                            }
+
+                            return (
+                              <div key={i} className="border border-blue-200 p-4 rounded-lg space-y-2 text-sm bg-blue-50 shadow-sm">
+                                <label className="block font-medium text-blue-700">Set {i + 1}</label>
+                                <input
+                                  type="number"
+                                  className="border border-blue-300 rounded-md w-full px-3 py-2 text-gray-800 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                  placeholder="Weight (kg)"
+                                  value={initialWeight}
+                                  onChange={(e) => updateSet(ex.id, i, 'weight', e.target.value)}
+                                />
+                                <label className="inline-flex items-center text-gray-700 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    className="form-checkbox h-5 w-5 text-green-600 rounded focus:ring-green-500 mr-2"
+                                    checked={currentSet.completed || false}
+                                    onChange={(e) => updateSet(ex.id, i, 'completed', e.target.checked)}
+                                  />
+                                  Completed
+                                </label>
+                                {previousSet.weight !== undefined && previousSet.weight !== '' && (
+                                  <p className="text-xs text-gray-500 mt-1 flex items-center">
+                                    Prev: {previousSet.weight}kg {weightComparisonIcon}
+                                  </p>
+                                )}
+                                {currentSet.completed && currentSet.timer > 0 && (
+                                  <div className="timer-container">
+                                    <div className="timer-circle"></div>
+                                    <span>Rest: {currentSet.timer}s</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    }
+                    return null; // Return null if no sets or not cardio
+                  })()}
+                </div>
+              ))
+            )}
+          </section>
+
+          {showCustomizeModal && (
+            <div className="modal-overlay">
+              <div className="modal-content">
+                <button onClick={() => setShowCustomizeModal(false)} className="modal-close-button">
+                  &times;
+                </button>
+                <h3 className="text-2xl font-bold text-blue-700 mb-4">Select Workout Plan</h3>
+                <p className="text-gray-600 mb-6">Choose a plan that fits your goals. More customization options coming soon!</p>
+
+                <div className="space-y-4">
+                  {Object.keys(WORKOUT_PLANS).map(planId => (
+                    <div
+                      key={planId}
+                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200
+                        ${selectedPlanId === planId ? 'border-blue-600 bg-blue-50 shadow-md' : 'border-gray-200 bg-white hover:bg-gray-50'}
+                      `}
+                      onClick={() => handlePlanSelect(planId)}
+                    >
+                      <label className="flex items-center cursor-pointer">
                         <input
-                          type="number"
-                          className="border rounded w-full px-2 py-1"
-                          placeholder="Weight (kg)"
-                          value={current.weight ?? ''}
-                          onChange={(e) => updateSet(ex.id, i, 'weight', e.target.value)}
+                          type="radio"
+                          name="workoutPlan"
+                          value={planId}
+                          checked={selectedPlanId === planId}
+                          onChange={() => handlePlanSelect(planId)}
+                          className="form-radio h-5 w-5 text-blue-600 mr-3"
                         />
-                        <label className="inline-flex items-center">
-                          <input
-                            type="checkbox"
-                            className="mr-2"
-                            checked={current.completed || false}
-                            onChange={(e) => updateSet(ex.id, i, 'completed', e.target.checked)}
-                          />
-                          Completed
-                        </label>
-                        {previous.weight && (
-                          <p className="text-xs text-gray-500">Prev: {previous.weight}kg</p>
-                        )}
-                      </div>
-                    );
-                  })}
+                        <div>
+                          <p className="font-semibold text-lg text-gray-800">{WORKOUT_PLANS[planId].name}</p>
+                          <p className="text-sm text-gray-600">{WORKOUT_PLANS[planId].description}</p>
+                        </div>
+                      </label>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
-          </section>
+            </div>
+          )}
         </main>
       );
     };
@@ -139,6 +615,7 @@
     root.render(<App />);
   </script>
 
+  <!-- Service Worker -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
