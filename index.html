@@ -14,60 +14,35 @@
         body {
             font-family: 'Inter', sans-serif;
         }
-        /* Custom animations for the app */
         @keyframes bounce-slow {
-          0%, 100% {
-            transform: translateY(0);
-          }
-          50% {
-            transform: translateY(-5px);
-          }
+          0%, 100% { transform: translateY(0);}
+          50% { transform: translateY(-5px);}
         }
-        .animate-bounce-slow {
-          animation: bounce-slow 2s infinite ease-in-out;
-        }
+        .animate-bounce-slow { animation: bounce-slow 2s infinite ease-in-out;}
         @keyframes fade-in-up {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(20px);}
+          to { opacity: 1; transform: translateY(0);}
         }
-        .animate-fade-in-up {
-          animation: fade-in-up 0.5s ease-out forwards;
-        }
+        .animate-fade-in-up { animation: fade-in-up 0.5s ease-out forwards;}
         @keyframes pulse {
-          0%, 100% {
-            opacity: 1;
-          }
-          50% {
-            opacity: 0.7;
-          }
+          0%, 100% { opacity: 1;}
+          50% { opacity: 0.7;}
         }
-        .animate-pulse {
-          animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        /* Hide number input arrows */
+        .animate-pulse { animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;}
         input[type="number"]::-webkit-outer-spin-button,
         input[type="number"]::-webkit-inner-spin-button {
             -webkit-appearance: none;
             margin: 0;
         }
-        input[type="number"] {
-            -moz-appearance: textfield;
-        }
+        input[type="number"] { -moz-appearance: textfield;}
     </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-blue-700 to-teal-500 text-gray-900 font-inter p-4 sm:p-6 md:p-8">
+<body class="min-h-screen bg-gradient-to-br from-gray-100 to-blue-100 text-gray-900 font-inter p-4 sm:p-6 md:p-8">
     <div id="root"></div>
 
     <!-- React and ReactDOM CDN -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel for JSX transformation in browser (for development/simple cases) -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <script type="text/babel">
@@ -374,20 +349,50 @@
             setSelectedDate(new Date()); // Set to current date
           };
 
+          // --- Drag & Swap Logic ---
+          // For demo: dropdown swap (drag-and-drop would require more code/libs)
+          const [customSchedule, setCustomSchedule] = useState(WORKOUT_PLAN.find(s => s.isSchedule).schedule);
+          const [swapModalOpen, setSwapModalOpen] = useState(false);
+          const [swapDayA, setSwapDayA] = useState('');
+          const [swapDayB, setSwapDayB] = useState('');
+
+          // Swap modal logic
+          const openSwapModal = () => setSwapModalOpen(true);
+          const closeSwapModal = () => { setSwapDayA(''); setSwapDayB(''); setSwapModalOpen(false);}
+          const handleSwapDays = () => {
+            const idxA = customSchedule.findIndex(d => d.day === swapDayA);
+            const idxB = customSchedule.findIndex(d => d.day === swapDayB);
+            if (idxA !== -1 && idxB !== -1) {
+              const newSchedule = [...customSchedule];
+              [newSchedule[idxA], newSchedule[idxB]] = [newSchedule[idxB], newSchedule[idxA]];
+              setCustomSchedule(newSchedule);
+              closeSwapModal();
+            }
+          };
+
+          // Previous week status for progress tracking
+          const getPreviousWeekStatus = () => {
+            const prevWeekDate = new Date(selectedDate);
+            prevWeekDate.setDate(prevWeekDate.getDate() - 7);
+            const prevWeekId = getISOWeekDate(prevWeekDate);
+            try {
+              const storedData = localStorage.getItem(`workouts-${prevWeekId}`);
+              return storedData ? JSON.parse(storedData) : {};
+            } catch {
+              return {};
+            }
+          };
+          const previousWeekStatus = getPreviousWeekStatus();
+
           // Get scheduled workouts for the selected day
           const getWorkoutsForSelectedDay = () => {
-            const scheduleSection = WORKOUT_PLAN.find(s => s.isSchedule);
-            if (!scheduleSection) return [];
-
-            // Map selectedDayIndex (0=Sunday, 1=Monday) to schedule's day string
+            const scheduleSection = { schedule: customSchedule };
             const currentDaySchedule = scheduleSection.schedule.find(item => item.day === selectedDayName);
-
             if (!currentDaySchedule || !currentDaySchedule.workoutKeys) return [];
-
             const exercisesForDay = [];
             currentDaySchedule.workoutKeys.forEach(key => {
               WORKOUT_PLAN.forEach(section => {
-                if (!section.isSchedule) { // Not the schedule section
+                if (!section.isSchedule) {
                   const dayWorkout = section.days.find(d => d.dayKey === key);
                   if (dayWorkout) {
                     exercisesForDay.push({
@@ -401,21 +406,21 @@
             });
             return exercisesForDay;
           };
-
           const workoutsForToday = getWorkoutsForSelectedDay();
 
+          // --- UI ---
           return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-700 to-teal-500 text-gray-900 font-inter p-4 sm:p-6 md:p-8">
+            <div className="min-h-screen bg-gradient-to-br from-gray-100 to-blue-100 text-gray-900 font-inter p-4 sm:p-6 md:p-8">
               <div className="max-w-4xl mx-auto">
                 {/* Header */}
-                <h1 className="text-4xl sm:text-5xl font-extrabold text-center mb-6 drop-shadow-lg text-white">
+                <h1 className="text-5xl font-extrabold text-center mb-8 text-blue-900 drop-shadow-lg">
                   <span className="inline-block animate-bounce-slow">🏋️‍♀️</span> Fitness Tracker
                 </h1>
 
                 {/* Motivation Quote */}
-                <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-6 mb-8 shadow-2xl border border-white border-opacity-30">
-                  <h2 className="text-2xl sm:text-3xl font-extrabold mb-3 text-center text-yellow-300">Daily Motivation</h2>
-                  <p className="text-lg italic text-center leading-relaxed text-white">
+                <div className="bg-white bg-opacity-80 rounded-2xl p-6 mb-8 shadow-xl border border-blue-100">
+                  <h2 className="text-2xl font-extrabold mb-3 text-center text-blue-500">Daily Motivation</h2>
+                  <p className="text-lg italic text-center leading-relaxed text-gray-700">
                     "{dailyQuote}"
                   </p>
                 </div>
@@ -447,70 +452,102 @@
                 )}
 
                 {/* Week Navigation and Current Week Display */}
-                <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4 mb-8 shadow-2xl border border-white border-opacity-30 text-white text-center">
-                  <div className="flex items-center justify-between mb-4">
+                <div className="bg-white bg-opacity-80 rounded-xl p-4 mb-8 shadow-xl border border-blue-100 text-center">
+                  <div className="flex items-center justify-between mb-4 gap-x-4">
                     <button
                       onClick={goToPreviousWeek}
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow transition duration-300 ease-in-out"
                     >
                       &lt; Prev Week
                     </button>
-                    <h2 className="text-xl sm:text-2xl font-extrabold text-green-300">Week: {selectedWeekId}</h2>
+                    <h2 className="text-xl font-extrabold text-blue-500">Week: {selectedWeekId}</h2>
                     <button
                       onClick={goToNextWeek}
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow transition duration-300 ease-in-out"
                     >
                       Next Week &gt;
                     </button>
                   </div>
-                  <p className="text-lg">Viewing workouts for: <span className="font-extrabold text-yellow-300">{selectedDate.toDateString()}</span></p>
+                  <p className="text-lg">Viewing: <span className="font-bold text-blue-700">{selectedDate.toDateString()}</span></p>
                 </div>
 
-                {/* Sample Weekly Schedule - Always at top of workout content */}
-                {WORKOUT_PLAN.find(s => s.isSchedule) && (
-                  <div className="bg-white bg-opacity-15 backdrop-blur-sm rounded-xl p-5 sm:p-6 mb-8 shadow-2xl border border-white border-opacity-30">
-                    <h2 className="text-2xl sm:text-3xl font-extrabold mb-4 text-yellow-200">Weekly Workout Schedule</h2>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full bg-white bg-opacity-10 rounded-lg shadow-inner">
-                        <thead>
-                          <tr className="bg-blue-700 bg-opacity-50">
-                            <th className="py-3 px-4 text-left text-sm font-extrabold text-gray-100 rounded-tl-lg">Day</th>
-                            <th className="py-3 px-4 text-left text-sm font-extrabold text-gray-100 rounded-tr-lg">Workout</th>
+                {/* Weekly Schedule with Swap */}
+                <div className="bg-white bg-opacity-80 rounded-xl p-5 mb-8 shadow-xl border border-blue-100">
+                  <h2 className="text-2xl font-extrabold mb-4 text-blue-700">Weekly Workout Schedule</h2>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full rounded-lg shadow-inner">
+                      <thead>
+                        <tr className="bg-blue-100">
+                          <th className="py-3 px-4 text-left text-sm font-extrabold text-blue-700 rounded-tl-lg">Day</th>
+                          <th className="py-3 px-4 text-left text-sm font-extrabold text-blue-700 rounded-tr-lg">Workout</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {customSchedule.map((item, idx) => (
+                          <tr key={idx} className={`transition-colors ${item.day === selectedDayName ? 'bg-blue-50' : ''}`}>
+                            <td className="py-3 px-4 text-base font-semibold">{item.day}</td>
+                            <td className="py-3 px-4 text-base">{item.workout}</td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {WORKOUT_PLAN.find(s => s.isSchedule).schedule.map((item, idx) => (
-                            <tr key={idx} className={`${item.day === selectedDayName ? 'bg-blue-500 bg-opacity-30' : (idx % 2 === 0 ? 'bg-opacity-5' : 'bg-opacity-10')} hover:bg-opacity-20 transition-colors`}>
-                              <td className="py-3 px-4 text-base text-gray-100">{item.day}</td>
-                              <td className="py-3 px-4 text-base text-gray-100">{item.workout}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                )}
+                  <button
+                    className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full shadow transition"
+                    onClick={openSwapModal}
+                  >
+                    Swap Workout/Cardio Days
+                  </button>
+                  {swapModalOpen && (
+                    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                      <div className="bg-white rounded-xl p-6 shadow-2xl text-gray-900 w-full max-w-xs border border-blue-200">
+                        <h3 className="font-bold mb-2 text-blue-700">Swap Days</h3>
+                        <select className="mb-2 w-full p-2 rounded border border-blue-200" value={swapDayA} onChange={e => setSwapDayA(e.target.value)}>
+                          <option value="">Select Day A</option>
+                          {customSchedule.map(d => <option key={d.day} value={d.day}>{d.day}</option>)}
+                        </select>
+                        <select className="mb-4 w-full p-2 rounded border border-blue-200" value={swapDayB} onChange={e => setSwapDayB(e.target.value)}>
+                          <option value="">Select Day B</option>
+                          {customSchedule.map(d => <option key={d.day} value={d.day}>{d.day}</option>)}
+                        </select>
+                        <button
+                          className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded mr-2"
+                          onClick={handleSwapDays}
+                          disabled={!swapDayA || !swapDayB || swapDayA === swapDayB}
+                        >
+                          Swap
+                        </button>
+                        <button
+                          className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded"
+                          onClick={closeSwapModal}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {/* Daily Workout Navigation */}
-                <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4 mb-8 shadow-2xl border border-white border-opacity-30 text-white text-center">
-                  <div className="flex items-center justify-between mb-4">
+                <div className="bg-white bg-opacity-80 rounded-xl p-4 mb-8 shadow-xl border border-blue-100 text-center">
+                  <div className="flex items-center justify-between mb-4 gap-x-4">
                     <button
                       onClick={goToPreviousDay}
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow transition"
                     >
                       &lt; Prev Day
                     </button>
-                    <h2 className="text-xl sm:text-2xl font-extrabold text-green-300">Workouts for {selectedDayName}</h2>
+                    <h2 className="text-xl font-extrabold text-blue-500">Workouts for {selectedDayName}</h2>
                     <button
                       onClick={goToNextDay}
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow transition"
                     >
                       Next Day &gt;
                     </button>
                   </div>
                   <button
                     onClick={goToToday}
-                    className="mt-3 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
+                    className="mt-3 bg-blue-400 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded-full shadow transition"
                   >
                     Go to Today
                   </button>
@@ -519,20 +556,20 @@
                 {/* Display Workouts for the Selected Day */}
                 {workoutsForToday.length > 0 ? (
                   workoutsForToday.map((section, sectionIndex) => (
-                    <div key={sectionIndex} className="bg-white bg-opacity-15 backdrop-blur-sm rounded-xl p-5 sm:p-6 mb-8 shadow-2xl border border-white border-opacity-30">
-                      <h2 className="text-2xl sm:text-3xl font-extrabold mb-4 text-yellow-200">{section.category}</h2>
-                      <h3 className="text-xl sm:text-2xl font-extrabold mb-3 text-blue-200">{section.dayName}</h3>
+                    <div key={sectionIndex} className="bg-white bg-opacity-80 rounded-xl p-5 mb-8 shadow-xl border border-blue-100">
+                      <h2 className="text-2xl font-extrabold mb-4 text-blue-700">{section.category}</h2>
+                      <h3 className="text-xl font-extrabold mb-3 text-blue-400">{section.dayName}</h3>
                       <ul className="space-y-3">
                         {section.exercises.map((exercise) => (
-                          <li key={exercise.id} className={`flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white bg-opacity-5 rounded-md p-3 shadow-sm hover:bg-opacity-10 transition-colors ${areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'border-l-4 border-green-500' : ''}`}>
+                          <li key={exercise.id} className={`flex flex-col sm:flex-row items-start sm:items-center justify-between bg-blue-50 rounded-lg p-3 shadow-sm hover:bg-blue-100 transition-colors ${areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'border-l-4 border-blue-400' : ''}`}>
                             <div className="flex items-center flex-grow mb-2 sm:mb-0">
-                              <span className={`text-lg sm:text-xl font-medium ${areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'line-through text-gray-400' : 'text-white'}`}>
+                              <span className={`text-lg font-semibold ${areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'line-through text-gray-400' : 'text-blue-900'}`}>
                                 {exercise.name}
                               </span>
                             </div>
                             <div className="flex items-center flex-wrap gap-2 sm:ml-4">
                               {exercise.sets.map((set, setIndex) => (
-                                <div key={setIndex} className="flex items-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-3 rounded-md shadow-md transition duration-200 ease-in-out">
+                                <div key={setIndex} className="flex items-center bg-white bg-opacity-90 text-blue-900 text-sm font-bold py-2 px-3 rounded-md shadow transition duration-200 ease-in-out">
                                   <div className="flex flex-col items-center">
                                     <label htmlFor={`${exercise.id}-set-${setIndex}-${selectedWeekId}-weight`} className="sr-only">Weight for Set {setIndex + 1}</label>
                                     <input
@@ -541,17 +578,23 @@
                                       placeholder="Weight"
                                       value={(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].weight) || ''}
                                       onChange={(e) => handleSetDataChange(exercise.id, setIndex, 'weight', e.target.value)}
-                                      className="w-20 p-1 rounded-md text-gray-900 bg-white bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-300 text-center mb-1"
+                                      className="w-20 p-1 rounded-md text-blue-900 bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-300 text-center mb-1"
                                       min="0"
                                     />
-                                    <span className="mb-1">Set {setIndex + 1} ({set.reps})</span>
+                                    {/* Previous week metrics */}
+                                    {previousWeekStatus[exercise.id] && previousWeekStatus[exercise.id][`set-${setIndex}`] && (
+                                      <span className="text-xs text-blue-400 mt-1">
+                                        Last week: {previousWeekStatus[exercise.id][`set-${setIndex}`].weight || '—'} kg, {previousWeekStatus[exercise.id][`set-${setIndex}`].reps || set.reps} reps
+                                      </span>
+                                    )}
+                                    <span className="mb-1 text-gray-500">Set {setIndex + 1} ({set.reps})</span>
                                     <button
                                         onClick={() => handleConfirmSet(exercise.id, setIndex)}
                                         className={`py-1 px-3 rounded-full text-xs font-bold transition duration-200 ease-in-out
                                             ${(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].completed)
-                                                ? 'bg-green-500 hover:bg-green-600'
-                                                : 'bg-gray-400 hover:bg-gray-500'
-                                            } text-white`}
+                                                ? 'bg-blue-400 hover:bg-blue-500 text-white'
+                                                : 'bg-gray-200 hover:bg-gray-300 text-blue-900'
+                                            }`}
                                     >
                                         {(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].completed) ? 'Completed' : 'Confirm Set'}
                                     </button>
@@ -563,7 +606,7 @@
                                   href={exercise.videoUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="ml-2 p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-md transition duration-200 ease-in-out transform hover:scale-110"
+                                  className="ml-2 p-2 rounded-full bg-blue-400 hover:bg-blue-500 text-white shadow-md transition duration-200 ease-in-out transform hover:scale-110"
                                   aria-label={`Watch video for ${exercise.name}`}
                                 >
                                   <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
@@ -578,13 +621,13 @@
                     </div>
                   ))
                 ) : (
-                  <div className="bg-white bg-opacity-15 backdrop-blur-sm rounded-xl p-5 sm:p-6 mb-8 shadow-2xl border border-white border-opacity-30 text-white text-center">
-                    <p className="text-lg">No specific workouts scheduled for {selectedDayName} in this week.</p>
+                  <div className="bg-white bg-opacity-80 rounded-xl p-5 mb-8 shadow-xl border border-blue-100 text-center">
+                    <p className="text-lg text-blue-700">No specific workouts scheduled for {selectedDayName} in this week.</p>
                   </div>
                 )}
 
                 {/* Footer */}
-                <div className="text-center text-gray-300 text-sm mt-8">
+                <div className="text-center text-gray-400 text-sm mt-8">
                   <p>&copy; 2025 Fitness Tracker. All rights reserved.</p>
                 </div>
               </div>
