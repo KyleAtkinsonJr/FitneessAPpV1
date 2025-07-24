@@ -4,89 +4,130 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Fitness Tracker</title>
-
-  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Google Fonts - Inter -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
-
-  <!-- PWA Manifest -->
-  <link rel="manifest" href="manifest.json" />
-
-  <style>
-    body {
-      font-family: 'Inter', sans-serif;
-    }
-    .uber-bg {
-      background: linear-gradient(135deg, #18181b 0%, #23272f 100%);
-    }
-    .uber-card {
-      background: linear-gradient(135deg, #23272f 0%, #18181b 100%);
-      border: 1px solid #23272f;
-    }
-    .uber-accent {
-      background: linear-gradient(90deg, #00e6a0 0%, #00bfff 100%);
-    }
-    .uber-accent-text {
-      color: #00e6a0;
-    }
-    .uber-btn {
-      background: linear-gradient(90deg, #00e6a0 0%, #00bfff 100%);
-      color: #18181b;
-    }
-    .uber-btn:hover {
-      background: linear-gradient(90deg, #00bfff 0%, #00e6a0 100%);
-      color: #fff;
-    }
-    .uber-border {
-      border-color: #00e6a0;
-    }
-    .uber-shadow {
-      box-shadow: 0 4px 24px 0 rgba(0, 230, 160, 0.15), 0 1.5px 6px 0 rgba(0, 191, 255, 0.10);
-    }
-    .uber-input {
-      background: #23272f;
-      color: #fff;
-      border: 1px solid #00e6a0;
-    }
-    .uber-input:focus {
-      border-color: #00bfff;
-      outline: none;
-    }
-    .uber-label {
-      color: #b1b1b1;
-    }
-  </style>
-</head>
-
-<body class="uber-bg min-h-screen text-white font-inter p-4 sm:p-6 md:p-8">
-  <div id="root"></div>
-
-  <!-- React 18 -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.client.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link rel="manifest" href="manifest.json" />
+</head>
+<body class="bg-gray-100 min-h-screen text-gray-900 font-sans">
+  <div id="root" class="max-w-2xl mx-auto p-4"></div>
 
-  <!-- Your App Code -->
   <script type="text/babel">
-    const { useState } = React;
+    const { useState, useEffect } = React;
     const { createRoot } = ReactDOM;
 
+    const MOTIVATION_QUOTES = [
+      "The only bad workout is the one that didn't happen.",
+      "Push yourself because no one else is going to do it for you.",
+      "Success is earned one rep at a time.",
+    ];
+
+    const today = new Date().toISOString().split("T")[0];
+    const currentWeekKey = `week-${getWeekNumber(new Date())}`;
+    const previousWeekKey = `week-${getWeekNumber(new Date()) - 1}`;
+
+    const WORKOUTS = [
+      { id: 'squats', name: 'Squats', sets: 3, reps: 12 },
+      { id: 'pushups', name: 'Push-ups', sets: 3, reps: 15 },
+    ];
+
+    function getWeekNumber(date) {
+      const d = new Date(date.getTime());
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+      const week1 = new Date(d.getFullYear(), 0, 4);
+      return (
+        1 +
+        Math.round(
+          ((d.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) /
+            7
+        )
+      );
+    }
+
     const App = () => {
-      const [count, setCount] = useState(0);
+      const [quote, setQuote] = useState('');
+      const [data, setData] = useState(() => {
+        const saved = localStorage.getItem(currentWeekKey);
+        return saved ? JSON.parse(saved) : {};
+      });
+
+      const [prevWeekData, setPrevWeekData] = useState(() => {
+        const saved = localStorage.getItem(previousWeekKey);
+        return saved ? JSON.parse(saved) : {};
+      });
+
+      useEffect(() => {
+        const stored = localStorage.getItem("quote-date");
+        if (stored !== today) {
+          const random = MOTIVATION_QUOTES[Math.floor(Math.random() * MOTIVATION_QUOTES.length)];
+          localStorage.setItem("quote-date", today);
+          localStorage.setItem("quote-text", random);
+          setQuote(random);
+        } else {
+          setQuote(localStorage.getItem("quote-text"));
+        }
+      }, []);
+
+      const updateSet = (exerciseId, setIndex, field, value) => {
+        const updated = { ...data };
+        if (!updated[exerciseId]) updated[exerciseId] = {};
+        if (!updated[exerciseId][`set-${setIndex}`]) {
+          updated[exerciseId][`set-${setIndex}`] = { weight: '', completed: false };
+        }
+        updated[exerciseId][`set-${setIndex}`][field] = field === 'completed' ? value : Number(value);
+        setData(updated);
+        localStorage.setItem(currentWeekKey, JSON.stringify(updated));
+      };
 
       return (
-        <div className="text-center">
-          <h1 className="text-4xl font-extrabold uber-accent-text mb-6">🏋️‍♀️ Fitness Tracker</h1>
-          <p className="text-lg mb-4">Welcome to your fitness journey!</p>
-          <button
-            onClick={() => setCount(count + 1)}
-            className="uber-btn px-6 py-2 rounded-lg font-bold hover:scale-105 transition"
-          >
-            You've clicked {count} times
-          </button>
-        </div>
+        <main className="bg-white shadow rounded-xl p-6 space-y-6">
+          <h1 className="text-3xl font-bold text-center">🏋️ Fitness Tracker</h1>
+
+          <div className="text-center bg-blue-50 p-3 rounded text-blue-700 font-semibold">
+            “{quote}”
+          </div>
+
+          <section>
+            <h2 className="text-xl font-bold mb-2">Today's Workout</h2>
+            {WORKOUTS.map((exercise) => (
+              <div key={exercise.id} className="mb-4 border-b pb-2">
+                <h3 className="font-semibold">{exercise.name} — {exercise.reps} reps x {exercise.sets} sets</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
+                  {Array.from({ length: exercise.sets }).map((_, i) => {
+                    const current = data[exercise.id]?.[`set-${i}`] || {};
+                    const previous = prevWeekData[exercise.id]?.[`set-${i}`] || {};
+                    return (
+                      <div key={i} className="flex flex-col gap-1 border p-2 rounded">
+                        <label className="text-sm">Set {i + 1}</label>
+                        <input
+                          type="number"
+                          className="border rounded px-2 py-1 text-sm"
+                          placeholder="Weight (kg)"
+                          value={current.weight ?? ''}
+                          onChange={(e) => updateSet(exercise.id, i, 'weight', e.target.value)}
+                        />
+                        <label className="inline-flex items-center text-sm">
+                          <input
+                            type="checkbox"
+                            className="mr-2"
+                            checked={current.completed || false}
+                            onChange={(e) => updateSet(exercise.id, i, 'completed', e.target.checked)}
+                          />
+                          Completed
+                        </label>
+                        {previous.weight && (
+                          <p className="text-xs text-gray-500">Prev: {previous.weight}kg</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </section>
+        </main>
       );
     };
 
@@ -94,13 +135,13 @@
     root.render(<App />);
   </script>
 
-  <!-- Service Worker for GitHub Pages -->
+  <!-- Register Service Worker -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./service-worker.js')
           .then(reg => console.log('Service Worker registered:', reg))
-          .catch(err => console.error('Service Worker registration failed:', err));
+          .catch(err => console.warn('SW registration failed:', err));
       });
     }
   </script>
