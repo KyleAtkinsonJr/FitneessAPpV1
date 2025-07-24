@@ -1,654 +1,108 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fitness Tracker</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts - Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <!-- PWA: Link to manifest.json -->
-    <link rel="manifest" href="manifest.json">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        /* Custom dark theme for Uber-like look */
-        .uber-bg {
-            background: linear-gradient(135deg, #18181b 0%, #23272f 100%);
-        }
-        .uber-card {
-            background: linear-gradient(135deg, #23272f 0%, #18181b 100%);
-            border: 1px solid #23272f;
-        }
-        .uber-accent {
-            background: linear-gradient(90deg, #00e6a0 0%, #00bfff 100%);
-        }
-        .uber-accent-text {
-            color: #00e6a0;
-        }
-        .uber-btn {
-            background: linear-gradient(90deg, #00e6a0 0%, #00bfff 100%);
-            color: #18181b;
-        }
-        .uber-btn:hover {
-            background: linear-gradient(90deg, #00bfff 0%, #00e6a0 100%);
-            color: #fff;
-        }
-        .uber-border {
-            border-color: #00e6a0;
-        }
-        .uber-shadow {
-            box-shadow: 0 4px 24px 0 rgba(0, 230, 160, 0.15), 0 1.5px 6px 0 rgba(0, 191, 255, 0.10);
-        }
-        .uber-input {
-            background: #23272f;
-            color: #fff;
-            border: 1px solid #00e6a0;
-        }
-        .uber-input:focus {
-            border-color: #00bfff;
-            outline: none;
-        }
-        .uber-label {
-            color: #b1b1b1;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fitness Tracker</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts - Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json" />
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .uber-bg {
+      background: linear-gradient(135deg, #18181b 0%, #23272f 100%);
+    }
+    .uber-card {
+      background: linear-gradient(135deg, #23272f 0%, #18181b 100%);
+      border: 1px solid #23272f;
+    }
+    .uber-accent {
+      background: linear-gradient(90deg, #00e6a0 0%, #00bfff 100%);
+    }
+    .uber-accent-text {
+      color: #00e6a0;
+    }
+    .uber-btn {
+      background: linear-gradient(90deg, #00e6a0 0%, #00bfff 100%);
+      color: #18181b;
+    }
+    .uber-btn:hover {
+      background: linear-gradient(90deg, #00bfff 0%, #00e6a0 100%);
+      color: #fff;
+    }
+    .uber-border {
+      border-color: #00e6a0;
+    }
+    .uber-shadow {
+      box-shadow: 0 4px 24px 0 rgba(0, 230, 160, 0.15), 0 1.5px 6px 0 rgba(0, 191, 255, 0.10);
+    }
+    .uber-input {
+      background: #23272f;
+      color: #fff;
+      border: 1px solid #00e6a0;
+    }
+    .uber-input:focus {
+      border-color: #00bfff;
+      outline: none;
+    }
+    .uber-label {
+      color: #b1b1b1;
+    }
+  </style>
 </head>
+
 <body class="uber-bg min-h-screen text-white font-inter p-4 sm:p-6 md:p-8">
-    <div id="root"></div>
+  <div id="root"></div>
 
-    <!-- React and ReactDOM CDN -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel for JSX transformation in browser (for development/simple cases) -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- React 18 -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.client.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <script type="text/babel">
-        const { useState, useEffect, useCallback, useRef } = React;
-        const { createRoot } = ReactDOM;
+  <!-- Your App Code -->
+  <script type="text/babel">
+    const { useState } = React;
+    const { createRoot } = ReactDOM;
 
-        const MOTIVATION_QUOTES = [
-          "The only bad workout is the one that didn't happen.",
-          "Success isn't always about greatness. It's about consistency. Consistent hard work gains success. Greatness will come.",
-          "Believe you can and you're halfway there.",
-          "Your body can stand almost anything. It's your mind that you have to convince.",
-          "The pain you feel today will be the strength you feel tomorrow.",
-          "Don't wish for it, work for it.",
-          "Strength does not come from physical capacity. It comes from an indomitable will.",
-          "Today's actions are tomorrow's results.",
-          "Push yourself because no one else is going to do it for you.",
-          "The only way to define your limits is by going beyond them.",
-        ];
+    const App = () => {
+      const [count, setCount] = useState(0);
 
-        // Updated WORKOUT_PLAN with dayKey and workoutType for easier lookup and video URLs
-        const WORKOUT_PLAN = [
-          {
-            category: "Strength Training (3–4 days/week)",
-            type: "strength",
-            focus: "Building lean muscle, boosting metabolism, and toning.",
-            days: [
-              {
-                name: "Day 1 – Lower Body (Glutes, Hamstrings, Quads)",
-                dayKey: "strength-lower-body",
-                exercises: [
-                  { id: "strength-lower-squats", name: "Barbell or goblet squats", sets: [{ reps: "8-12" }, { reps: "8-12" }, { reps: "8-12" }], videoUrl: "https://www.youtube.com/watch?v=62bDZajYJm0" },
-                  { id: "strength-lower-rdl", name: "Romanian deadlifts", sets: [{ reps: "10" }, { reps: "10" }, { reps: "10" }], videoUrl: "https://www.youtube.com/watch?v=IWygEz3U4UE" },
-                  { id: "strength-lower-stepups-lunges", name: "Step-ups or walking lunges", sets: [{ reps: "12" }, { reps: "12" }, { reps: "12" }], videoUrl: "https://www.youtube.com/watch?v=T7h-cdaAE74" },
-                  { id: "strength-lower-hip-thrusts", name: "Hip thrusts", sets: [{ reps: "15" }, { reps: "15" }, { reps: "15" }], videoUrl: "https://www.youtube.com/watch?v=3ENrRyaAFEQ" },
-                  { id: "strength-lower-calf-raises", name: "Calf raises", sets: [{ reps: "20" }, { reps: "20" }, { reps: "20" }], videoUrl: "https://www.youtube.com/watch?v=rbvyXV1uHhY" },
-                ],
-              },
-              {
-                name: "Day 2 – Upper Body Push (Chest, Shoulders, Triceps)",
-                dayKey: "strength-upper-push",
-                exercises: [
-                  { id: "strength-upper-push-bench-press", name: "Dumbbell bench press", sets: [{ reps: "10" }, { reps: "10" }, { reps: "10" }], videoUrl: "https://www.youtube.com/watch?v=jJDFJKyvw1E" },
-                  { id: "strength-upper-push-shoulder-press", name: "Shoulder press", sets: [{ reps: "10" }, { reps: "10" }, { reps: "10" }], videoUrl: "https://www.youtube.com/watch?v=seUCEgPsBtc" },
-                  { id: "strength-upper-push-lateral-raises", name: "Lateral raises", sets: [{ reps: "15" }, { reps: "15" }, { reps: "15" }], videoUrl: "https://www.youtube.com/watch?v=4p_m96HXMLk" },
-                  { id: "strength-upper-push-tricep-pushdowns", name: "Tricep pushdowns", sets: [{ reps: "12" }, { reps: "12" }, { reps: "12" }], videoUrl: "https://www.youtube.com/watch?v=R8zsVZoldvY" },
-                ],
-              },
-              {
-                name: "Day 3 – Upper Body Pull (Back, Biceps)",
-                dayKey: "strength-upper-pull",
-                exercises: [
-                  { id: "strength-upper-pull-lat-pulldowns", name: "Lat pulldowns or assisted pull-ups", sets: [{ reps: "10" }, { reps: "10" }, { reps: "10" }], videoUrl: "https://www.youtube.com/watch?v=z7ei5hd5as8" },
-                  { id: "strength-upper-pull-cable-rows", name: "Seated cable rows", sets: [{ reps: "10" }, { reps: "10" }, { reps: "10" }], videoUrl: "https://www.youtube.com/watch?v=kISTb3lZ21A" },
-                  { id: "strength-upper-pull-bicep-curls", name: "Dumbbell bicep curls", sets: [{ reps: "12" }, { reps: "12" }, { reps: "12" }], videoUrl: "https://www.youtube.com/watch?v=XGFqO6HMnGQ" },
-                  { id: "strength-upper-pull-face-pulls", name: "Face pulls", sets: [{ reps: "15" }, { reps: "15" }, { reps: "15" }], videoUrl: "https://www.youtube.com/watch?v=cuTBqxntdso" },
-                ],
-              },
-              {
-                name: "Day 4 – Optional Full Body",
-                dayKey: "strength-full-body",
-                exercises: [
-                  { id: "strength-full-deadlifts", name: "Deadlifts", sets: [{ reps: "8" }, { reps: "8" }, { reps: "8" }], videoUrl: "https://www.youtube.com/watch?v=ntr64W6ZWB0" },
-                  { id: "strength-full-kettlebell-swings", name: "Kettlebell swings", sets: [{ reps: "12" }, { reps: "12" }, { reps: "12" }], videoUrl: "https://www.youtube.com/watch?v=1aPWXHqP_RU" },
-                  { id: "strength-full-pushups", name: "Push-ups", sets: [{ reps: "12" }, { reps: "12" }, { reps: "12" }], videoUrl: "https://www.youtube.com/watch?v=nYaKp54oBZ0" },
-                  { id: "strength-full-plank-rows", name: "Plank rows or renegade rows", sets: [{ reps: "10" }, { reps: "10" }, { reps: "10" }], videoUrl: "https://www.youtube.com/watch?v=F68p7cJFtOI" },
-                ],
-              },
-            ],
-          },
-          {
-            category: "Cardio Plan (Structured Around Work Schedule)",
-            type: "cardio",
-            days: [
-              {
-                name: "On Days Off from Work",
-                dayKey: "cardio-days-off",
-                exercises: [
-                  { id: "cardio-off-step-machine", name: "30 mins on the Step Machine", sets: [{ reps: "30 mins" }], videoUrl: "https://www.youtube.com/watch?v=CCgEzLrf45Y" },
-                ],
-              },
-              {
-                name: "On Late Start Work Days (3x/week)",
-                dayKey: "cardio-late-start",
-                exercises: [
-                  { id: "cardio-late-bike-elliptical", name: "60 mins on the Bike or Elliptical", sets: [{ reps: "60 mins" }], videoUrl: "https://www.youtube.com/watch?v=9mhcHHUxMuQ" },
-                  { id: "cardio-late-spin-step", name: "45 mins Spin + 15 mins Step Machine", sets: [{ reps: "45/15 mins" }], videoUrl: "https://www.youtube.com/watch?v=S3Qv6d91_G0" },
-                ],
-              },
-            ],
-          },
-          {
-            category: "Sample Weekly Schedule",
-            isSchedule: true,
-            schedule: [
-              { day: "Monday", workout: "Strength (Lower Body) + 30-min steps (off work)", workoutKeys: ["strength-lower-body", "cardio-days-off"] },
-              { day: "Tuesday", workout: "60-min bike or spin + steps (late start)", workoutKeys: ["cardio-late-start"] },
-              { day: "Wednesday", workout: "Strength (Upper Push)", workoutKeys: ["strength-upper-push"] },
-              { day: "Thursday", workout: "60-min elliptical or spin + steps (late start)", workoutKeys: ["cardio-late-start"] },
-              { day: "Friday", workout: "Strength (Upper Pull) + 30-min steps (off work)", workoutKeys: ["strength-upper-pull", "cardio-days-off"] },
-              { day: "Saturday", workout: "Optional full body + 30-min steps (off work)", workoutKeys: ["strength-full-body", "cardio-days-off"] },
-              { day: "Sunday", workout: "60-min cardio or rest (if needed)", workoutKeys: ["cardio-late-start"] },
-            ],
-          },
-        ];
+      return (
+        <div className="text-center">
+          <h1 className="text-4xl font-extrabold uber-accent-text mb-6">🏋️‍♀️ Fitness Tracker</h1>
+          <p className="text-lg mb-4">Welcome to your fitness journey!</p>
+          <button
+            onClick={() => setCount(count + 1)}
+            className="uber-btn px-6 py-2 rounded-lg font-bold hover:scale-105 transition"
+          >
+            You've clicked {count} times
+          </button>
+        </div>
+      );
+    };
 
-        // Helper to get today's date in YYYY-MM-DD format
-        const getTodayDateString = (date = new Date()) => {
-          return date.toISOString().split('T')[0];
-        };
+    const root = createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
 
-        // Helper to get day name from date
-        const getDayName = (date) => {
-          const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-          return days[date.getDay()];
-        };
-
-        // Helper to get current week ID in YYYY-WW format (ISO week date)
-        const getISOWeekDate = (date) => {
-          const d = new Date(date.valueOf());
-          const dayNum = d.getDay();
-          d.setDate(d.getDate() + 3 - (dayNum === 0 ? 7 : dayNum));
-          const week1 = new Date(d.getFullYear(), 0, 4);
-          return d.getFullYear() + '-W' + String(1 + Math.ceil(((d.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7)).padStart(2, '0');
-        };
-
-        // Main App Component
-        const App = () => {
-          // workoutStatus now stores objects { completed: boolean, weight: number } for each set
-          const [workoutStatus, setWorkoutStatus] = useState({});
-          const [dailyQuote, setDailyQuote] = useState('');
-          const [userMessage, setUserMessage] = useState('');
-
-          // Date/Week/Day Navigation States
-          const [selectedDate, setSelectedDate] = useState(new Date());
-          const selectedWeekId = getISOWeekDate(selectedDate);
-          const selectedDayName = getDayName(selectedDate);
-
-          // Timer state
-          const REST_TIMER_DURATION = 60;
-          const [timer, setTimer] = useState(REST_TIMER_DURATION);
-          const [isTimerActive, setIsTimerActive] = useState(false);
-          const [showTimer, setShowTimer] = useState(false);
-          const timerIntervalRef = useRef(null);
-
-          // Custom schedule state for swapping days
-          const [customSchedule, setCustomSchedule] = useState(WORKOUT_PLAN.find(s => s.isSchedule).schedule);
-          const [swapModalOpen, setSwapModalOpen] = useState(false);
-          const [swapDayA, setSwapDayA] = useState('');
-          const [swapDayB, setSwapDayB] = useState('');
-
-          // Load workout status from local storage on initial render or week change
-          useEffect(() => {
-            const loadWorkouts = () => {
-              try {
-                const storedData = localStorage.getItem(`workouts-${selectedWeekId}`);
-                if (storedData) {
-                  setWorkoutStatus(JSON.parse(storedData));
-                } else {
-                  setWorkoutStatus({});
-                }
-              } catch (error) {
-                setUserMessage("Error loading workout progress locally.");
-              }
-            };
-            loadWorkouts();
-          }, [selectedWeekId]);
-
-          // Set daily motivational quote
-          useEffect(() => {
-            const today = getTodayDateString();
-            const lastQuoteDate = localStorage.getItem('lastQuoteDate');
-            let currentQuote = localStorage.getItem('currentQuote');
-
-            if (!lastQuoteDate || lastQuoteDate !== today || !currentQuote) {
-              const randomIndex = Math.floor(Math.random() * MOTIVATION_QUOTES.length);
-              currentQuote = MOTIVATION_QUOTES[randomIndex];
-              localStorage.setItem('lastQuoteDate', today);
-              localStorage.setItem('currentQuote', currentQuote);
-            }
-            setDailyQuote(currentQuote);
-          }, []);
-
-          // Timer logic
-          useEffect(() => {
-            if (isTimerActive && timer > 0) {
-              timerIntervalRef.current = setInterval(() => {
-                setTimer((prevTimer) => prevTimer - 1);
-              }, 1000);
-            } else if (timer === 0) {
-              clearInterval(timerIntervalRef.current);
-              setIsTimerActive(false);
-            }
-            return () => clearInterval(timerIntervalRef.current);
-          }, [isTimerActive, timer]);
-
-          const startTimer = () => {
-            setTimer(REST_TIMER_DURATION);
-            setIsTimerActive(true);
-            setShowTimer(true);
-          };
-
-          const resetTimer = () => {
-            clearInterval(timerIntervalRef.current);
-            setIsTimerActive(false);
-            setTimer(REST_TIMER_DURATION);
-            setShowTimer(false);
-          };
-
-          // Save workout status to local storage
-          const saveWorkoutsToLocalStorage = useCallback((data) => {
-            try {
-              localStorage.setItem(`workouts-${selectedWeekId}`, JSON.stringify(data));
-              setUserMessage('');
-            } catch (error) {
-              setUserMessage("Failed to save workout data locally. Storage might be full.");
-            }
-          }, [selectedWeekId]);
-
-          // Handle set data change
-          const handleSetDataChange = useCallback((exerciseId, setIndex, field, value) => {
-            const updatedWorkoutStatus = JSON.parse(JSON.stringify(workoutStatus));
-            if (!updatedWorkoutStatus[exerciseId]) {
-              updatedWorkoutStatus[exerciseId] = {};
-            }
-            if (!updatedWorkoutStatus[exerciseId][`set-${setIndex}`]) {
-              updatedWorkoutStatus[exerciseId][`set-${setIndex}`] = { completed: false, weight: '' };
-            }
-            if (field === 'weight') {
-                const numericValue = parseFloat(value);
-                updatedWorkoutStatus[exerciseId][`set-${setIndex}`][field] = isNaN(numericValue) ? '' : numericValue;
-            } else {
-                updatedWorkoutStatus[exerciseId][`set-${setIndex}`][field] = value;
-            }
-            setWorkoutStatus(updatedWorkoutStatus);
-            saveWorkoutsToLocalStorage(updatedWorkoutStatus);
-            if (field === 'completed' && value === true) {
-              startTimer();
-            }
-          }, [workoutStatus, saveWorkoutsToLocalStorage]);
-
-          // Confirm set button
-          const handleConfirmSet = useCallback((exerciseId, setIndex) => {
-            const currentSetStatus = workoutStatus[exerciseId]?.[`set-${setIndex}`]?.completed || false;
-            handleSetDataChange(exerciseId, setIndex, 'completed', !currentSetStatus);
-          }, [workoutStatus, handleSetDataChange]);
-
-          // Check if all sets for an exercise are completed
-          const areAllSetsCompleted = (exerciseId, totalSets) => {
-            const exerciseSetsStatus = workoutStatus[exerciseId] || {};
-            for (let i = 0; i < totalSets; i++) {
-              if (!exerciseSetsStatus[`set-${i}`] || !exerciseSetsStatus[`set-${i}`].completed) {
-                return false;
-              }
-            }
-            return true;
-          };
-
-          // Navigation functions for weeks
-          const goToPreviousWeek = () => {
-            const newDate = new Date(selectedDate);
-            newDate.setDate(newDate.getDate() - 7);
-            setSelectedDate(newDate);
-          };
-
-          const goToNextWeek = () => {
-            const newDate = new Date(selectedDate);
-            newDate.setDate(newDate.getDate() + 7);
-            setSelectedDate(newDate);
-          };
-
-          // Navigation functions for days within the selected week
-          const goToPreviousDay = () => {
-            const newDate = new Date(selectedDate);
-            newDate.setDate(newDate.getDate() - 1);
-            setSelectedDate(newDate);
-          };
-
-          const goToNextDay = () => {
-            const newDate = new Date(selectedDate);
-            newDate.setDate(newDate.getDate() + 1);
-            setSelectedDate(newDate);
-          };
-
-          const goToToday = () => {
-            setSelectedDate(new Date());
-          };
-
-          // Swap modal logic
-          const openSwapModal = () => setSwapModalOpen(true);
-          const closeSwapModal = () => {
-            setSwapDayA('');
-            setSwapDayB('');
-            setSwapModalOpen(false);
-          };
-          const handleSwapDays = () => {
-            const idxA = customSchedule.findIndex(d => d.day === swapDayA);
-            const idxB = customSchedule.findIndex(d => d.day === swapDayB);
-            if (idxA !== -1 && idxB !== -1) {
-              const newSchedule = [...customSchedule];
-              [newSchedule[idxA], newSchedule[idxB]] = [newSchedule[idxB], newSchedule[idxA]];
-              setCustomSchedule(newSchedule);
-              closeSwapModal();
-            }
-          };
-
-          // Get previous week's workout status for weight carry-over
-          const getPreviousWeekStatus = () => {
-            const prevWeekDate = new Date(selectedDate);
-            prevWeekDate.setDate(prevWeekDate.getDate() - 7);
-            const prevWeekId = getISOWeekDate(prevWeekDate);
-            try {
-              const storedData = localStorage.getItem(`workouts-${prevWeekId}`);
-              return storedData ? JSON.parse(storedData) : {};
-            } catch {
-              return {};
-            }
-          };
-          const previousWeekStatus = getPreviousWeekStatus();
-
-          // Get scheduled workouts for the selected day
-          const getWorkoutsForSelectedDay = () => {
-            const scheduleSection = { schedule: customSchedule };
-            const currentDaySchedule = scheduleSection.schedule.find(item => item.day === selectedDayName);
-            if (!currentDaySchedule || !currentDaySchedule.workoutKeys) return [];
-            const exercisesForDay = [];
-            currentDaySchedule.workoutKeys.forEach(key => {
-              WORKOUT_PLAN.forEach(section => {
-                if (!section.isSchedule) {
-                  const dayWorkout = section.days.find(d => d.dayKey === key);
-                  if (dayWorkout) {
-                    exercisesForDay.push({
-                      category: section.category,
-                      dayName: dayWorkout.name,
-                      exercises: dayWorkout.exercises
-                    });
-                  }
-                }
-              });
-            });
-            return exercisesForDay;
-          };
-
-          const workoutsForToday = getWorkoutsForSelectedDay();
-
-          return (
-            <div className="max-w-4xl mx-auto">
-
-            {/* Header */}
-            <h1 className="text-4xl sm:text-5xl font-extrabold text-center mb-6 uber-accent-text drop-shadow-lg">
-              <span className="inline-block animate-bounce-slow">🏋️‍♀️</span> Fitness Tracker
-            </h1>
-
-            {/* Motivation Quote */}
-            <div className="uber-card rounded-xl p-6 mb-8 uber-shadow">
-              <h2 className="text-2xl sm:text-3xl font-extrabold mb-3 text-center uber-accent-text">Daily Motivation</h2>
-              <p className="text-lg italic text-center leading-relaxed text-gray-300">
-                "{dailyQuote}"
-              </p>
-            </div>
-
-            {/* User Message/Error Display */}
-            {userMessage && (
-              <div className="bg-red-600 bg-opacity-80 text-white p-3 rounded-lg mb-4 text-center uber-shadow">
-                {userMessage}
-              </div>
-            )}
-
-            {/* Rest Timer */}
-            {showTimer && (
-              <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-                <div className="uber-card rounded-2xl p-8 uber-shadow text-white text-center border-4 uber-border animate-fade-in-up">
-                  <h2 className="text-4xl font-extrabold mb-4 uber-accent-text">Rest Time!</h2>
-                  <div className="text-7xl font-extrabold mb-6 animate-pulse uber-accent-text">
-                    {String(Math.floor(timer / 60)).padStart(2, '0')}:
-                    {String(timer % 60).padStart(2, '0')}
-                  </div>
-                  <button
-                    onClick={resetTimer}
-                    className="uber-btn font-bold py-3 px-6 rounded-full uber-shadow transition duration-300 ease-in-out transform hover:scale-105"
-                  >
-                    Skip Rest
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Week Navigation and Current Week Display */}
-            <div className="uber-card rounded-xl p-4 mb-8 uber-shadow text-white text-center">
-              <div className="flex items-center justify-between mb-4 gap-x-4">
-                <button
-                  onClick={goToPreviousWeek}
-                  className="uber-btn font-bold py-2 px-4 rounded-full uber-shadow transition duration-300 ease-in-out transform hover:scale-105"
-                >
-                  &lt; Prev Week
-                </button>
-                <h2 className="text-xl sm:text-2xl font-extrabold uber-accent-text">Week: {selectedWeekId}</h2>
-                <button
-                  onClick={goToNextWeek}
-                  className="uber-btn font-bold py-2 px-4 rounded-full uber-shadow transition duration-300 ease-in-out transform hover:scale-105"
-                >
-                  Next Week &gt;
-                </button>
-              </div>
-              <p className="text-lg">Viewing workouts for: <span className="font-extrabold uber-accent-text">{selectedDate.toDateString()}</span></p>
-            </div>
-
-            {/* Sample Weekly Schedule */}
-            <div className="uber-card rounded-xl p-5 sm:p-6 mb-8 uber-shadow">
-              <h2 className="text-2xl sm:text-3xl font-extrabold mb-4 uber-accent-text">Weekly Workout Schedule</h2>
-              <div className="overflow-x-auto">
-                <table className="min-w-full rounded-lg uber-shadow">
-                  <thead>
-                    <tr className="uber-accent">
-                      <th className="py-3 px-4 text-left text-sm font-extrabold text-black rounded-tl-lg">Day</th>
-                      <th className="py-3 px-4 text-left text-sm font-extrabold text-black rounded-tr-lg">Workout</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {customSchedule.map((item, idx) => (
-                      <tr key={idx} className={`${item.day === selectedDayName ? 'uber-accent-text bg-opacity-10' : 'text-gray-300'} hover:bg-opacity-20 transition-colors`}>
-                        <td className="py-3 px-4 text-base">{item.day}</td>
-                        <td className="py-3 px-4 text-base">{item.workout}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <button
-                className="mt-4 uber-btn font-bold py-2 px-4 rounded-full uber-shadow"
-                onClick={openSwapModal}
-              >
-                Swap Workout/Cardio Days
-              </button>
-              {swapModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
-                  <div className="uber-card rounded-xl p-6 uber-shadow text-white w-full max-w-xs">
-                    <h3 className="font-bold mb-2 uber-accent-text">Swap Days</h3>
-                    <select className="mb-2 w-full p-2 rounded uber-input" value={swapDayA} onChange={e => setSwapDayA(e.target.value)}>
-                      <option value="">Select Day A</option>
-                      {customSchedule.map(d => <option key={d.day} value={d.day}>{d.day}</option>)}
-                    </select>
-                    <select className="mb-4 w-full p-2 rounded uber-input" value={swapDayB} onChange={e => setSwapDayB(e.target.value)}>
-                      <option value="">Select Day B</option>
-                      {customSchedule.map(d => <option key={d.day} value={d.day}>{d.day}</option>)}
-                    </select>
-                    <button
-                      className="uber-btn font-bold py-2 px-4 rounded mr-2"
-                      onClick={handleSwapDays}
-                      disabled={!swapDayA || !swapDayB || swapDayA === swapDayB}
-                    >
-                      Swap
-                    </button>
-                    <button
-                      className="bg-gray-700 hover:bg-gray-900 text-white font-bold py-2 px-4 rounded"
-                      onClick={closeSwapModal}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Daily Workout Navigation */}
-            <div className="uber-card rounded-xl p-4 mb-8 uber-shadow text-white text-center">
-              <div className="flex items-center justify-between mb-4 gap-x-4">
-                <button
-                  onClick={goToPreviousDay}
-                  className="uber-btn font-bold py-2 px-4 rounded-full uber-shadow transition duration-300 ease-in-out transform hover:scale-105"
-                >
-                  &lt; Prev Day
-                </button>
-                <h2 className="text-xl sm:text-2xl font-extrabold uber-accent-text">Workouts for {selectedDayName}</h2>
-                <button
-                  onClick={goToNextDay}
-                  className="uber-btn font-bold py-2 px-4 rounded-full uber-shadow transition duration-300 ease-in-out transform hover:scale-105"
-                >
-                  Next Day &gt;
-                </button>
-              </div>
-              <button
-                onClick={goToToday}
-                className="mt-3 uber-btn font-bold py-2 px-6 rounded-full uber-shadow transition duration-300 ease-in-out transform hover:scale-105"
-              >
-                Go to Today
-              </button>
-            </div>
-
-            {/* Display Workouts for the Selected Day */}
-            {workoutsForToday.length > 0 ? (
-              workoutsForToday.map((section, sectionIndex) => (
-                <div key={sectionIndex} className="uber-card rounded-xl p-5 sm:p-6 mb-8 uber-shadow">
-                  <h2 className="text-2xl sm:text-3xl font-extrabold mb-4 uber-accent-text">{section.category}</h2>
-                  <h3 className="text-xl sm:text-2xl font-extrabold mb-3 text-blue-400">{section.dayName}</h3>
-                  <ul className="space-y-3">
-                    {section.exercises.map((exercise) => (
-                      <li key={exercise.id} className={`flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-md p-3 uber-shadow hover:bg-opacity-10 transition-colors ${areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'border-l-4 uber-border' : ''}`}>
-                        <div className="flex items-center flex-grow mb-2 sm:mb-0">
-                          <span className={`text-lg sm:text-xl font-medium ${areAllSetsCompleted(exercise.id, exercise.sets.length) ? 'line-through text-gray-500' : 'text-white'}`}>
-                            {exercise.name}
-                          </span>
-                        </div>
-                        <div className="flex items-center flex-wrap gap-2 sm:ml-4">
-                          {exercise.sets.map((set, setIndex) => (
-                            <div key={setIndex} className="flex items-center uber-accent text-black text-sm font-bold py-2 px-3 rounded-md uber-shadow transition duration-200 ease-in-out">
-                              <div className="flex flex-col items-center">
-                                <label htmlFor={`${exercise.id}-set-${setIndex}-${selectedWeekId}-weight`} className="sr-only">Weight for Set {setIndex + 1}</label>
-                                <input
-                                  type="number"
-                                  id={`${exercise.id}-set-${setIndex}-${selectedWeekId}-weight`}
-                                  placeholder="Weight"
-                                  value={(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].weight) || ''}
-                                  onChange={(e) => handleSetDataChange(exercise.id, setIndex, 'weight', e.target.value)}
-                                  className="w-20 p-1 rounded-md uber-input text-center mb-1"
-                                  min="0"
-                                />
-                                {previousWeekStatus[exercise.id] && previousWeekStatus[exercise.id][`set-${setIndex}`] && (
-                                  <span className="text-xs text-gray-400 mt-1">
-                                    Prev: {previousWeekStatus[exercise.id][`set-${setIndex}`].weight || '—'} kg, 
-                                    {previousWeekStatus[exercise.id][`set-${setIndex}`].reps || set.reps} reps
-                                  </span>
-                                )}
-                                <span className="mb-1 uber-label">Set {setIndex + 1} ({set.reps})</span>
-                                <button
-                                    onClick={() => handleConfirmSet(exercise.id, setIndex)}
-                                    className={`py-1 px-3 rounded-full text-xs font-bold transition duration-200 ease-in-out
-                                        ${(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].completed)
-                                            ? 'uber-btn'
-                                            : 'bg-gray-700 hover:bg-gray-900 text-white'
-                                        }`}
-                                >
-                                    {(workoutStatus[exercise.id] && workoutStatus[exercise.id][`set-${setIndex}`] && workoutStatus[exercise.id][`set-${setIndex}`].completed) ? 'Completed' : 'Confirm Set'}
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                          {exercise.videoUrl && (
-                            <a
-                              href={exercise.videoUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="ml-2 p-2 rounded-full uber-accent text-black uber-shadow transition duration-200 ease-in-out transform hover:scale-110"
-                              aria-label={`Watch video for ${exercise.name}`}
-                            >
-                              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd"></path>
-                              </svg>
-                            </a>
-                          )}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))
-            ) : (
-              <div className="uber-card rounded-xl p-5 sm:p-6 mb-8 uber-shadow text-white text-center">
-                <p className="text-lg">No specific workouts scheduled for {selectedDayName} in this week.</p>
-              </div>
-            )}
-
-            {/* Footer */}
-            <div className="text-center text-gray-500 text-sm mt-8">
-              <p>&copy; 2025 Fitness Tracker. All rights reserved.</p>
-            </div>
-          </div>
-        };
-
-        // Render the React app
-        const container = document.getElementById('root');
-        const root = createRoot(container);
-        root.render(<App />);
-    </script>
-    <!-- PWA: Register Service Worker -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/service-worker.js')
-            .then(registration => {
-              console.log('ServiceWorker registered: ', registration);
-            })
-            .catch(registrationError => {
-              console.log('ServiceWorker registration failed: ', registrationError);
-            });
-        });
-      }
-    </script>
+  <!-- Service Worker for GitHub Pages -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+          .then(reg => console.log('Service Worker registered:', reg))
+          .catch(err => console.error('Service Worker registration failed:', err));
+      });
+    }
+  </script>
 </body>
 </html>
