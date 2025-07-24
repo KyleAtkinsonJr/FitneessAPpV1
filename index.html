@@ -208,9 +208,7 @@
       { id: 'incline-pushups', name: 'Incline Push-ups', sets: 3, reps: 15, videoUrl: 'https://www.youtube.com/watch?v=yAbg3_pJKvw' }, // PureGym
       { id: 'dumbbell-shoulder-press', name: 'Dumbbell Shoulder Press', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=seUCEgPsBtc' }, // MrSupplement
       { id: 'dumbbell-chest-press', name: 'Dumbbell Chest Press', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=X3YrlBmjWrY' }, // Livestrong Woman
-      { id: 'tricep-extensions', name: 'Overhead Tricep Extensions (Dumbbell)', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=YM8iX9BJWjA' }, // Women's Strength Nation
-      { id: 'dumbbell-incline-press', name: 'Dumbbell Incline Press', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=cRconFeJ68g' }, // MrSupplement
-      { id: 'arnold-press', name: 'Arnold Press', sets: 3, reps: 10, videoUrl: 'https://www.youtube.com/watch?v=fFyrgCWTIaI' }, // BODi - Lita Lewis
+      { id: 'tricep-extensions', name: 'Overhead Tricep Extensions (Dumbbell)', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=YM8iX9BJWjA' },
       { id: 'cable-flyes', name: 'Cable Flyes', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=KwvJEXts2lg' }, // Physique Development
       { id: 'tricep-pushdowns', name: 'Tricep Pushdowns (Cable)', sets: 3, reps: 12, videoUrl: 'https://www.youtube.com/watch?v=d_Kz7-y11G4' }, // PureGym
       // Strength - Upper Body (Pull)
@@ -391,7 +389,7 @@
               w-full h-24 sm:h-28 text-center
             `}
           >
-            <span className="text-xs font-semibold">{getDayName(day)}</span>
+            <span className="text-xs font-semibold">{day.toLocaleDateString('en-US', { weekday: 'short' })}</span>
             <span className="text-lg font-bold">{day.getDate()}</span>
             <span className="text-xl mt-1">{dayIcon}</span> {/* Display icon */}
             <span className={`text-xs mt-1 px-1 py-0.5 rounded-full font-medium hidden sm:block
@@ -590,6 +588,7 @@
       const [isChartJsLoaded, setIsChartJsLoaded] = useState(false); // New state for Chart.js loading
       const [highlightedDate, setHighlightedDate] = useState(null); // New state for highlighting
 
+      // Initialize selectedPlanId from localStorage
       const [selectedPlanId, setSelectedPlanId] = useState(() => {
         try {
           return localStorage.getItem('selectedFitnessPlan') || 'ppl_split_plan';
@@ -599,9 +598,11 @@
         }
       });
 
+      // Initialize allWorkoutData from localStorage
       const [allWorkoutData, setAllWorkoutData] = useState(() => {
         try {
-          return JSON.parse(localStorage.getItem('fitnessTrackerData') || '{}');
+          const savedData = localStorage.getItem('fitnessTrackerData');
+          return savedData ? JSON.parse(savedData) : {};
         } catch (e) {
           console.error("Error parsing fitnessTrackerData from localStorage:", e);
           return {};
@@ -610,31 +611,46 @@
 
       // Temporary state for current day's steps input
       const [dailyStepsInput, setDailyStepsInput] = useState('');
-      // Temporary state for current day's exercise data (deep copy of relevant part of allWorkoutData)
+      // Temporary state for current day's exercises and their set data
       const [dailyExercisesState, setDailyExercisesState] = useState({});
 
-      // Effect to initialize temporary states when selectedDate changes
+      // Effect to update localStorage whenever allWorkoutData or selectedPlanId changes
+      useEffect(() => {
+        try {
+          localStorage.setItem('fitnessTrackerData', JSON.stringify(allWorkoutData));
+        } catch (e) {
+          console.error("Error saving fitnessTrackerData to localStorage:", e);
+        }
+      }, [allWorkoutData]);
+
+      useEffect(() => {
+        try {
+          localStorage.setItem('selectedFitnessPlan', selectedPlanId);
+        } catch (e) {
+          console.error("Error saving selectedFitnessPlan to localStorage:", e);
+        }
+      }, [selectedPlanId]);
+
+
+      // Effect to initialize temporary states when selectedDate changes or allWorkoutData updates
       useEffect(() => {
         const dateKey = formatDate(selectedDate);
         const currentDayData = allWorkoutData[dateKey] || {};
 
         setDailyStepsInput(currentDayData.steps ?? '');
 
-        // Deep copy exercise data for the current day
         const exercisesCopy = {};
         const defaultPlannedExercises = WORKOUT_PLANS[selectedPlanId]?.schedule[getDayName(selectedDate)] || [];
         const customizedExercises = currentDayData.exercises;
 
-        // Determine which set of exercises to use for the current day's display and logging
-        const exercisesToLoad = Array.isArray(customizedExercises)
-          ? customizedExercises // If explicitly customized (even if empty), use it
-          : defaultPlannedExercises; // Otherwise, use the default plan
+        const exercisesToLoad = (Array.isArray(customizedExercises))
+          ? customizedExercises
+          : defaultPlannedExercises;
 
         exercisesToLoad.forEach(ex => {
             exercisesCopy[ex.id] = {};
             const numSets = ex.sets || (ex.type === 'cardio' ? 1 : 0);
             for (let i = 0; i < numSets; i++) {
-                // Copy existing data or initialize
                 exercisesCopy[ex.id][`set-${i}`] = {
                     ...(currentDayData[ex.id]?.[`set-${i}`] || { weight: '', completed: false, timer: 0 })
                 };
@@ -642,6 +658,7 @@
         });
         setDailyExercisesState(exercisesCopy);
       }, [selectedDate, allWorkoutData, selectedPlanId]);
+
 
       // Effect to check if Chart.js and its plugin are loaded
       useEffect(() => {
@@ -666,91 +683,86 @@
       }, [highlightedDate]);
 
 
-      // Daily quote effect
+      // Daily quote effect - Reverted to use localStorage
       useEffect(() => {
-        const savedDate = localStorage.getItem("quote-date");
-        const savedQuote = localStorage.getItem("quote-text");
-        const formattedToday = formatDate(new Date());
+        try {
+          const savedDate = localStorage.getItem("quote-date");
+          const savedQuote = localStorage.getItem("quote-text");
+          const formattedToday = formatDate(new Date());
 
-        if (savedDate !== formattedToday || !savedQuote) {
-          const newQuote = MOTIVATION_QUOTES[Math.floor(Math.random() * MOTIVATION_QUOTES.length)];
-          localStorage.setItem("quote-date", formattedToday);
-          localStorage.setItem("quote-text", newQuote);
-          setQuote(newQuote);
-        } else {
-          setQuote(savedQuote);
+          if (savedDate !== formattedToday || !savedQuote) {
+            const newQuote = MOTIVATION_QUOTES[Math.floor(Math.random() * MOTIVATION_QUOTES.length)];
+            localStorage.setItem("quote-date", formattedToday);
+            localStorage.setItem("quote-text", newQuote);
+            setQuote(newQuote);
+          } else {
+            setQuote(savedQuote);
+          }
+        } catch (e) {
+          console.error("Error with quote localStorage:", e);
+          setQuote(MOTIVATION_QUOTES[Math.floor(Math.random() * MOTIVATION_QUOTES.length)]); // Fallback
         }
       }, []);
 
-      // Function to update a set's data in dailyExercisesState
-      const updateSetTemp = useCallback((exerciseId, setIndex, field, value) => {
-        setDailyExercisesState(prev => {
-          const newExState = { ...prev };
-          if (!newExState[exerciseId]) newExState[exerciseId] = {};
-          if (!newExState[exerciseId][`set-${setIndex}`]) {
-            newExState[exerciseId][`set-${setIndex}`] = { weight: '', completed: false, timer: 0 };
+
+      // Function to update a set's data in localStorage immediately
+      const updateSetInLocalStorage = useCallback((exerciseId, setIndex, field, value) => {
+        setAllWorkoutData(prevAllWorkoutData => {
+          const newAllWorkoutData = { ...prevAllWorkoutData };
+          const dateKey = formatDate(selectedDate);
+
+          if (!newAllWorkoutData[dateKey]) {
+            newAllWorkoutData[dateKey] = {};
           }
+          if (!newAllWorkoutData[dateKey][exerciseId]) {
+            newAllWorkoutData[dateKey][exerciseId] = {};
+          }
+          if (!newAllWorkoutData[dateKey][exerciseId][`set-${setIndex}`]) {
+            newAllWorkoutData[dateKey][exerciseId][`set-${setIndex}`] = { weight: '', completed: false, timer: 0 };
+          }
+
           if (field === 'completed') {
-            newExState[exerciseId][`set-${setIndex}`].completed = value;
+            newAllWorkoutData[dateKey][exerciseId][`set-${setIndex}`].completed = value;
             if (value) {
-              newExState[exerciseId][`set-${setIndex}`].timer = 60; // Start timer
+              newAllWorkoutData[dateKey][exerciseId][`set-${setIndex}`].timer = 60; // Start timer
               setRestTimer(60); // Set global timer for popup
               setRestTimerVisible(true); // Show popup
             } else {
-              newExState[exerciseId][`set-${setIndex}`].timer = 0; // Reset timer
+              newAllWorkoutData[dateKey][exerciseId][`set-${setIndex}`].timer = 0; // Reset timer
               setRestTimerVisible(false); // Hide popup if unchecked
             }
           } else if (field === 'weight') {
-            newExState[exerciseId][`set-${setIndex}`].weight = Number(value);
+            newAllWorkoutData[dateKey][exerciseId][`set-${setIndex}`].weight = Number(value);
           } else if (field === 'timer') {
-            newExState[exerciseId][`set-${setIndex}`].timer = value;
+            newAllWorkoutData[dateKey][exerciseId][`set-${setIndex}`].timer = value;
           }
-          return newExState;
+
+          // Update dailyExercisesState for immediate UI reflection
+          setDailyExercisesState(prevDailyExState => {
+              const updatedDailyExState = { ...prevDailyExState };
+              if (!updatedDailyExState[exerciseId]) updatedDailyExState[exerciseId] = {};
+              updatedDailyExState[exerciseId][`set-${setIndex}`] = { ...newAllWorkoutData[dateKey][exerciseId][`set-${setIndex}`] };
+              return updatedDailyExState;
+          });
+
+          return newAllWorkoutData;
         });
-      }, []);
+      }, [selectedDate]);
 
-      // Function to save daily steps and workout data to localStorage
-      const saveDailyProgress = useCallback(() => {
-        const dateKey = formatDate(selectedDate);
-        const updatedAllData = { ...allWorkoutData };
 
-        // The exercises for the day are already managed by dailyExercisesState and workoutsForSelectedDay
-        // We need to ensure that if a day was customized, its 'exercises' array in allWorkoutData is kept.
-        // If it was not customized, we don't need to explicitly save the default exercises.
-        const currentDayPlannedExercises = WORKOUT_PLANS[selectedPlanId]?.schedule[getDayName(selectedDate)] || [];
-        const exercisesToSave = workoutsForSelectedDay; // Use the actual exercises displayed/logged
-
-        const newDayData = {
-          steps: dailyStepsInput, // steps from the state, will be saved when "Save Steps" is clicked
-          exercises: exercisesToSave, // Store the list of exercises for the day
-          ...dailyExercisesState // Merge the exercise-specific data (weights, completed status)
-        };
-
-        updatedAllData[dateKey] = newDayData;
-        setAllWorkoutData(updatedAllData);
-        localStorage.setItem('fitnessTrackerData', JSON.stringify(updatedAllData));
-      }, [selectedDate, allWorkoutData, dailyStepsInput, dailyExercisesState, selectedPlanId]);
-
-      // Function to save ONLY daily steps to localStorage (for the modal)
+      // Function to save ONLY daily steps to localStorage
       const saveDailyProgressForSteps = useCallback(() => {
-        const dateKey = formatDate(selectedDate);
-        const updatedAllData = { ...allWorkoutData };
-        if (!updatedAllData[dateKey]) updatedAllData[dateKey] = {};
-        updatedAllData[dateKey].steps = dailyStepsInput;
-        // Preserve existing exercise data if any
-        if (allWorkoutData[dateKey]?.exercises) {
-            updatedAllData[dateKey].exercises = allWorkoutData[dateKey].exercises;
-        }
-        // Preserve existing exercise-specific data if any
-        Object.keys(allWorkoutData[dateKey] || {}).forEach(key => {
-            if (key !== 'steps' && key !== 'exercises') {
-                updatedAllData[dateKey][key] = allWorkoutData[dateKey][key];
-            }
-        });
+        setAllWorkoutData(prevAllWorkoutData => {
+          const newAllWorkoutData = { ...prevAllWorkoutData };
+          const dateKey = formatDate(selectedDate);
 
-        setAllWorkoutData(updatedAllData);
-        localStorage.setItem('fitnessTrackerData', JSON.stringify(updatedAllData));
-      }, [selectedDate, allWorkoutData, dailyStepsInput]);
+          if (!newAllWorkoutData[dateKey]) {
+            newAllWorkoutData[dateKey] = {};
+          }
+          newAllWorkoutData[dateKey].steps = dailyStepsInput;
+          return newAllWorkoutData;
+        });
+      }, [selectedDate, dailyStepsInput]);
 
 
       // Timer effect for global rest timer popup
@@ -837,142 +849,171 @@
         !workoutsForSelectedDay.some(w => w.id === ex.id) // Don't show already added exercises
       );
 
-      const handleAddExercise = () => {
-        if (selectedExerciseToAdd) {
-          const exerciseToAdd = ALL_EXERCISES.find(ex => ex.id === selectedExerciseToAdd);
-          if (exerciseToAdd) {
-            const updatedExercises = [...workoutsForSelectedDay, exerciseToAdd];
-            const updatedAllData = { ...allWorkoutData };
-            if (!updatedAllData[dateKey]) updatedAllData[dateKey] = {};
-            updatedAllData[dateKey].exercises = updatedExercises;
-            setAllWorkoutData(updatedAllData);
-            localStorage.setItem('fitnessTrackerData', JSON.stringify(updatedAllData));
-            setSelectedExerciseToAdd('');
-            setAddExerciseSearch('');
-            // Also update the dailyExercisesState to reflect the new exercise immediately
-            setDailyExercisesState(prev => ({
-                ...prev,
-                [exerciseToAdd.id]: {} // Initialize new exercise with empty set data
-            }));
-          }
-        }
-      };
+      const handleAddExercise = useCallback(() => {
+        if (!selectedExerciseToAdd) return;
 
-      const handleRemoveExercise = (exerciseIdToRemove) => {
-        const updatedExercises = workoutsForSelectedDay.filter(ex => ex.id !== exerciseIdToRemove);
-        const updatedAllData = { ...allWorkoutData };
-        if (!updatedAllData[dateKey]) updatedAllData[dateKey] = {};
-        updatedAllData[dateKey].exercises = updatedExercises;
-        // Also remove specific exercise data (weights, completed, timers) for the removed exercise
-        if (updatedAllData[dateKey][exerciseIdToRemove]) {
-            delete updatedAllData[dateKey][exerciseIdToRemove];
-        }
-        setAllWorkoutData(updatedAllData);
-        localStorage.setItem('fitnessTrackerData', JSON.stringify(updatedAllData));
-        // Also update the dailyExercisesState to remove the exercise
-        setDailyExercisesState(prev => {
-            const newExState = { ...prev };
-            delete newExState[exerciseIdToRemove];
-            return newExState;
+        const exerciseToAdd = ALL_EXERCISES.find(ex => ex.id === selectedExerciseToAdd);
+        if (!exerciseToAdd) return;
+
+        setAllWorkoutData(prevAllWorkoutData => {
+          const newAllWorkoutData = { ...prevAllWorkoutData };
+          const dateKey = formatDate(selectedDate);
+
+          if (!newAllWorkoutData[dateKey]) {
+            newAllWorkoutData[dateKey] = {};
+          }
+          if (!newAllWorkoutData[dateKey].exercises) {
+            newAllWorkoutData[dateKey].exercises = [];
+          }
+
+          // Add only if not already present
+          if (!newAllWorkoutData[dateKey].exercises.some(ex => ex.id === exerciseToAdd.id)) {
+            newAllWorkoutData[dateKey].exercises.push(exerciseToAdd);
+          }
+          return newAllWorkoutData;
         });
-      };
+
+        setSelectedExerciseToAdd('');
+        setAddExerciseSearch('');
+      }, [selectedDate, selectedExerciseToAdd]);
+
+
+      const handleRemoveExercise = useCallback((exerciseIdToRemove) => {
+        setAllWorkoutData(prevAllWorkoutData => {
+          const newAllWorkoutData = { ...prevAllWorkoutData };
+          const dateKey = formatDate(selectedDate);
+
+          if (newAllWorkoutData[dateKey] && newAllWorkoutData[dateKey].exercises) {
+            newAllWorkoutData[dateKey].exercises = newAllWorkoutData[dateKey].exercises.filter(ex => ex.id !== exerciseIdToRemove);
+            // Also remove any specific data for this exercise
+            if (newAllWorkoutData[dateKey][exerciseIdToRemove]) {
+                delete newAllWorkoutData[dateKey][exerciseIdToRemove];
+            }
+          }
+          return newAllWorkoutData;
+        });
+      }, [selectedDate]);
+
 
       // Handle moving workout to another day
-      const handleMoveWorkout = () => {
+      const handleMoveWorkout = useCallback(() => {
+        if (!targetMoveDay) return;
+
         const sourceDateKey = formatDate(selectedDate);
         const targetDate = addDays(getStartOfWeek(selectedDate), getDayIndex(targetMoveDay));
         const targetDateKey = formatDate(targetDate);
 
-        if (sourceDateKey === targetDateKey || !targetMoveDay) return; // Cannot move to the same day or no target selected
+        if (sourceDateKey === targetDateKey) return;
 
-        const updatedAllData = { ...allWorkoutData };
+        setAllWorkoutData(prevAllWorkoutData => {
+          const newAllWorkoutData = { ...prevAllWorkoutData };
 
-        // Get data from source day
-        const sourceDayData = updatedAllData[sourceDateKey] || {};
-        const exercisesToMove = sourceDayData.exercises || [];
-        const exerciseSpecificDataToMove = {};
-        Object.keys(sourceDayData).forEach(key => {
-            if (key !== 'exercises' && key !== 'steps') { // Copy only exercise-specific data
-                exerciseSpecificDataToMove[key] = sourceDayData[key];
+          const sourceData = newAllWorkoutData[sourceDateKey] || {};
+          const targetData = newAllWorkoutData[targetDateKey] || {};
+
+          // Get effective data for source day (custom or default plan)
+          const sourceEffectiveExercises = Array.isArray(sourceData.exercises)
+              ? sourceData.exercises
+              : WORKOUT_PLANS[selectedPlanId]?.schedule[getDayName(selectedDate)] || [];
+          const sourceSteps = sourceData.steps ?? 0;
+          const sourceExerciseSpecificData = {};
+          Object.keys(sourceData).forEach(key => {
+              if (key !== 'exercises' && key !== 'steps') {
+                  sourceExerciseSpecificData[key] = sourceData[key];
+              }
+          });
+
+          // Move exercises and steps to target day, merging with existing
+          if (!newAllWorkoutData[targetDateKey]) {
+              newAllWorkoutData[targetDateKey] = {};
+          }
+          newAllWorkoutData[targetDateKey].steps = (targetData.steps ?? 0) + sourceSteps;
+          newAllWorkoutData[targetDateKey].exercises = [...(targetData.exercises || []), ...sourceEffectiveExercises.filter(ex => !targetData.exercises?.some(tEx => tEx.id === ex.id))];
+          Object.assign(newAllWorkoutData[targetDateKey], sourceExerciseSpecificData);
+
+
+          // Clear source day data
+          newAllWorkoutData[sourceDateKey] = {
+              steps: 0,
+              exercises: []
+          };
+          Object.keys(sourceData).forEach(key => {
+            if (key !== 'exercises' && key !== 'steps') {
+                delete newAllWorkoutData[sourceDateKey][key];
             }
+          });
+
+          return newAllWorkoutData;
         });
-        const sourceSteps = sourceDayData.steps || 0;
 
-
-        // Set data to target day
-        if (!updatedAllData[targetDateKey]) updatedAllData[targetDateKey] = {};
-        // Ensure we don't duplicate exercises if target day already has some
-        const existingTargetExercises = updatedAllData[targetDateKey].exercises || [];
-        const newExercisesForTarget = exercisesToMove.filter(ex => !existingTargetExercises.some(existingEx => existingEx.id === ex.id));
-        updatedAllData[targetDateKey].exercises = [...existingTargetExercises, ...newExercisesForTarget];
-
-        Object.assign(updatedAllData[targetDateKey], exerciseSpecificDataToMove); // Merge exercise data
-        updatedAllData[targetDateKey].steps = (updatedAllData[targetDateKey].steps || 0) + sourceSteps; // Add steps
-
-        // Clear data from source day
-        updatedAllData[sourceDateKey] = { steps: 0, exercises: [] }; // Clear steps, exercises and exercise data
-
-        setAllWorkoutData(updatedAllData);
-        localStorage.setItem('fitnessTrackerData', JSON.stringify(updatedAllData));
         setShowCustomizeModal(false);
-        setSelectedDate(targetDate); // Automatically navigate to the target day
-        setTargetMoveDay(''); // Reset target day selection
-        setHighlightedDate(targetDateKey); // Highlight the target day
-      };
+        setSelectedDate(targetDate);
+        setTargetMoveDay('');
+        setHighlightedDate(targetDateKey);
+      }, [selectedDate, targetMoveDay, selectedPlanId]);
+
 
       // Handle swapping workouts between two days
-      const handleSwapWorkouts = () => {
+      const handleSwapWorkouts = useCallback(() => {
+        if (!targetMoveDay) return;
+
         const sourceDateKey = formatDate(selectedDate);
         const targetDate = addDays(getStartOfWeek(selectedDate), getDayIndex(targetMoveDay));
         const targetDateKey = formatDate(targetDate);
 
-        if (sourceDateKey === targetDateKey || !targetMoveDay) return; // Cannot swap with the same day or no target selected
+        if (sourceDateKey === targetDateKey) return;
 
-        const updatedAllData = { ...allWorkoutData };
+        setAllWorkoutData(prevAllWorkoutData => {
+          const newAllWorkoutData = { ...prevAllWorkoutData };
 
-        // Store source day's data temporarily
-        const tempSourceDayData = updatedAllData[sourceDateKey] || { steps: 0, exercises: [] };
-        const tempSourceExercises = tempSourceDayData.exercises;
-        const tempSourceSteps = tempSourceDayData.steps;
-        const tempSourceExerciseSpecificData = {};
-        Object.keys(tempSourceDayData).forEach(key => {
-            if (key !== 'exercises' && key !== 'steps') {
-                tempSourceExerciseSpecificData[key] = tempSourceDayData[key];
-            }
+          const sourceData = newAllWorkoutData[sourceDateKey] || {};
+          const targetData = newAllWorkoutData[targetDateKey] || {};
+
+          // Get effective data for source day
+          const sourceEffectiveExercises = Array.isArray(sourceData.exercises)
+              ? sourceData.exercises
+              : WORKOUT_PLANS[selectedPlanId]?.schedule[getDayName(selectedDate)] || [];
+          const sourceSteps = sourceData.steps ?? 0;
+          const sourceExerciseSpecificData = {};
+          Object.keys(sourceData).forEach(key => {
+              if (key !== 'exercises' && key !== 'steps') {
+                  sourceExerciseSpecificData[key] = sourceData[key];
+              }
+          });
+
+          // Get effective data for target day
+          const targetEffectiveExercises = Array.isArray(targetData.exercises)
+              ? targetData.exercises
+              : WORKOUT_PLANS[selectedPlanId]?.schedule[getDayName(targetDate)] || [];
+          const targetSteps = targetData.steps ?? 0;
+          const targetExerciseSpecificData = {};
+          Object.keys(targetData).forEach(key => {
+              if (key !== 'exercises' && key !== 'steps') {
+                  targetExerciseSpecificData[key] = targetData[key];
+              }
+          });
+
+          // Perform the swap
+          newAllWorkoutData[sourceDateKey] = {
+              steps: targetSteps,
+              exercises: targetEffectiveExercises,
+              ...targetExerciseSpecificData
+          };
+
+          newAllWorkoutData[targetDateKey] = {
+              steps: sourceSteps,
+              exercises: sourceEffectiveExercises,
+              ...sourceExerciseSpecificData
+          };
+
+          return newAllWorkoutData;
         });
 
-        // Get target day's data
-        const targetDayData = updatedAllData[targetDateKey] || { steps: 0, exercises: [] };
-        const targetExercises = targetDayData.exercises;
-        const targetSteps = targetDayData.steps;
-        const targetExerciseSpecificData = {};
-        Object.keys(targetDayData).forEach(key => {
-            if (key !== 'exercises' && key !== 'steps') {
-                targetExerciseSpecificData[key] = targetDayData[key];
-            }
-        });
-
-        // Apply target day's data to source day
-        updatedAllData[sourceDateKey] = {
-            steps: targetSteps,
-            exercises: targetExercises,
-            ...targetExerciseSpecificData
-        };
-
-        // Apply source day's data to target day
-        updatedAllData[targetDateKey] = {
-            steps: tempSourceSteps,
-            exercises: tempSourceExercises,
-            ...tempSourceExerciseSpecificData
-        };
-
-        setAllWorkoutData(updatedAllData);
-        localStorage.setItem('fitnessTrackerData', JSON.stringify(updatedAllData));
-        setShowCustomizeModal(false);
-        setTargetMoveDay(''); // Reset target day selection
+        // Removed setShowCustomizeModal(false); to keep the modal open
         setSelectedDate(targetDate); // Navigate to the target day after swap
-        setHighlightedDate(targetDateKey); // Highlight the target day
-      };
+        setHighlightedDate(formatDate(targetDate)); // Highlight the target day
+        setTargetMoveDay(''); // Clear target day selection
+      }, [selectedDate, targetMoveDay, selectedPlanId]);
 
 
       // --- Progress Chart Data Aggregation ---
@@ -1078,6 +1119,7 @@
       const { weightChartData, getStepsChartData } = getChartData();
       const [stepsFilter, setStepsFilter] = useState('week'); // 'week', 'prev-week', 'month'
 
+      // No isLoading state, render directly
       return (
         <main className="bg-white rounded-3xl shadow-2xl p-6 space-y-6 border-4 border-blue-200">
           <h1 className="text-4xl font-extrabold text-center text-blue-700 mb-4">
@@ -1086,6 +1128,8 @@
           <div className="text-center bg-green-100 text-green-800 px-6 py-4 rounded-xl shadow-inner text-lg font-medium italic">
             “{quote}”
           </div>
+
+          {/* Removed User ID display as it's not relevant for localStorage */}
 
           {/* Prominent Current Day Display */}
           <div className="text-center bg-blue-100 text-blue-800 px-6 py-3 rounded-xl shadow-md text-xl font-semibold mb-6">
@@ -1197,6 +1241,7 @@
                                 }
                               }
 
+                              // Disable subsequent sets until the previous one is completed
                               const isSetDisabled = i > 0 && !(dailyExercisesState[ex.id]?.[`set-${i-1}`]?.completed);
 
                               return (
@@ -1211,7 +1256,7 @@
                                       className="border border-blue-300 rounded-md w-full px-3 py-2 text-gray-800 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                                       placeholder="Weight (kg)"
                                       value={initialWeight}
-                                      onChange={(e) => updateSetTemp(ex.id, i, 'weight', e.target.value)}
+                                      onChange={(e) => updateSetInLocalStorage(ex.id, i, 'weight', e.target.value)}
                                       disabled={isSetDisabled}
                                     />
                                   )}
@@ -1225,7 +1270,7 @@
                                       type="checkbox"
                                       className={`form-checkbox h-5 w-5 ${ex.type === 'cardio' ? 'text-green-600' : 'text-blue-600'} rounded focus:ring-current mr-2`}
                                       checked={currentSet.completed || false}
-                                      onChange={(e) => updateSetTemp(ex.id, i, 'completed', e.target.checked)}
+                                      onChange={(e) => updateSetInLocalStorage(ex.id, i, 'completed', e.target.checked)}
                                       disabled={isSetDisabled}
                                     />
                                     Completed
@@ -1240,12 +1285,6 @@
                     })()}
                   </div>
                 ))}
-                <button
-                  onClick={saveDailyProgress}
-                  className="w-full px-6 py-3 mt-6 bg-green-600 text-white font-bold rounded-full shadow-lg hover:bg-green-700 transition-colors duration-300 transform hover:scale-105"
-                >
-                  Log Workout
-                </button>
               </div>
             )}
           </section>
@@ -1366,7 +1405,7 @@
               setStepsFilter={setStepsFilter}
               dailyStepsInput={dailyStepsInput}
               setDailyStepsInput={setDailyStepsInput}
-              saveDailyProgressForSteps={saveDailyProgressForSteps} // Pass the new function
+              saveDailyProgressForSteps={saveDailyProgressForSteps}
               isChartJsLoaded={isChartJsLoaded} /* Pass the loading status */
             />
           )}
@@ -1397,6 +1436,11 @@
           .catch(err => console.warn('SW registration failed:', err));
       });
     }
+    // Remove Firebase SDK imports as they are no longer needed
+    // The previous Firebase SDK imports were:
+    // import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    // import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    // import { getFirestore, doc, setDoc, onSnapshot, collection, FieldValue, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
   </script>
 </body>
 </html>
