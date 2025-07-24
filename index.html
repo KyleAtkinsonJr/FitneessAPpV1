@@ -14,7 +14,6 @@
         body {
             font-family: 'Inter', sans-serif;
         }
-        /* Custom animations for the app */
         @keyframes bounce-slow {
           0%, 100% {
             transform: translateY(0);
@@ -50,7 +49,6 @@
         .animate-pulse {
           animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
-        /* Hide number input arrows */
         input[type="number"]::-webkit-outer-spin-button,
         input[type="number"]::-webkit-inner-spin-button {
             -webkit-appearance: none;
@@ -153,7 +151,7 @@
                 dayKey: "cardio-late-start",
                 exercises: [
                   { id: "cardio-late-bike-elliptical", name: "60 mins on the Bike or Elliptical", sets: [{ reps: "60 mins" }], videoUrl: "https://www.youtube.com/watch?v=9mhcHHUxMuQ" },
-                  { id: "cardio-late-spin-step", name: "45 mins Spin + 15 mins Step Machine", sets: [{ reps: "45/15 mins" }], videoUrl: "https://www.youtube.com/watch?v=S3Qv6d91_G0" }, // General spin class
+                  { id: "cardio-late-spin-step", name: "45 mins Spin + 15 mins Step Machine", sets: [{ reps: "45/15 mins" }], videoUrl: "https://www.youtube.com/watch?v=S3Qv6d91_G0" },
                 ],
               },
             ],
@@ -168,7 +166,7 @@
               { day: "Thursday", workout: "60-min elliptical or spin + steps (late start)", workoutKeys: ["cardio-late-start"] },
               { day: "Friday", workout: "Strength (Upper Pull) + 30-min steps (off work)", workoutKeys: ["strength-upper-pull", "cardio-days-off"] },
               { day: "Saturday", workout: "Optional full body + 30-min steps (off work)", workoutKeys: ["strength-full-body", "cardio-days-off"] },
-              { day: "Sunday", workout: "60-min cardio or rest (if needed)", workoutKeys: ["cardio-late-start"] }, // Assuming 60-min cardio maps to late-start cardio
+              { day: "Sunday", workout: "60-min cardio or rest (if needed)", workoutKeys: ["cardio-late-start"] },
             ],
           },
         ];
@@ -188,30 +186,35 @@
         const getISOWeekDate = (date) => {
           const d = new Date(date.valueOf());
           const dayNum = d.getDay();
-          d.setDate(d.getDate() + 3 - (dayNum === 0 ? 7 : dayNum)); // Set to Thursday of the current week (ISO week starts Monday)
-          const week1 = new Date(d.getFullYear(), 0, 4); // Jan 4th is always in week 1
+          d.setDate(d.getDate() + 3 - (dayNum === 0 ? 7 : dayNum));
+          const week1 = new Date(d.getFullYear(), 0, 4);
           return d.getFullYear() + '-W' + String(1 + Math.ceil(((d.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7)).padStart(2, '0');
         };
 
         // Main App Component
         const App = () => {
           // workoutStatus now stores objects { completed: boolean, weight: number } for each set
-          const [workoutStatus, setWorkoutStatus] = useState({}); // { "exercise-id": { "set-index-0": { completed: true, weight: 50 }, ... }, ... }
+          const [workoutStatus, setWorkoutStatus] = useState({});
           const [dailyQuote, setDailyQuote] = useState('');
           const [userMessage, setUserMessage] = useState('');
 
           // Date/Week/Day Navigation States
-          const [selectedDate, setSelectedDate] = useState(new Date()); // Represents the date for the currently viewed day/week
+          const [selectedDate, setSelectedDate] = useState(new Date());
           const selectedWeekId = getISOWeekDate(selectedDate);
           const selectedDayName = getDayName(selectedDate);
-          const selectedDayIndex = selectedDate.getDay(); // 0 for Sunday, 1 for Monday
 
           // Timer state
-          const REST_TIMER_DURATION = 60; // 1 minute in seconds
+          const REST_TIMER_DURATION = 60;
           const [timer, setTimer] = useState(REST_TIMER_DURATION);
           const [isTimerActive, setIsTimerActive] = useState(false);
           const [showTimer, setShowTimer] = useState(false);
           const timerIntervalRef = useRef(null);
+
+          // Custom schedule state for swapping days
+          const [customSchedule, setCustomSchedule] = useState(WORKOUT_PLAN.find(s => s.isSchedule).schedule);
+          const [swapModalOpen, setSwapModalOpen] = useState(false);
+          const [swapDayA, setSwapDayA] = useState('');
+          const [swapDayB, setSwapDayB] = useState('');
 
           // Load workout status from local storage on initial render or week change
           useEffect(() => {
@@ -220,18 +223,15 @@
                 const storedData = localStorage.getItem(`workouts-${selectedWeekId}`);
                 if (storedData) {
                   setWorkoutStatus(JSON.parse(storedData));
-                  console.log("Workouts loaded from localStorage for week:", selectedWeekId);
                 } else {
-                  setWorkoutStatus({}); // No data for this week
-                  console.log("No workouts found in localStorage for week:", selectedWeekId);
+                  setWorkoutStatus({});
                 }
               } catch (error) {
-                console.error("Error loading from localStorage:", error);
                 setUserMessage("Error loading workout progress locally.");
               }
             };
             loadWorkouts();
-          }, [selectedWeekId]); // Reload when selectedWeekId changes
+          }, [selectedWeekId]);
 
           // Set daily motivational quote
           useEffect(() => {
@@ -258,7 +258,6 @@
               clearInterval(timerIntervalRef.current);
               setIsTimerActive(false);
             }
-
             return () => clearInterval(timerIntervalRef.current);
           }, [isTimerActive, timer]);
 
@@ -266,7 +265,6 @@
             setTimer(REST_TIMER_DURATION);
             setIsTimerActive(true);
             setShowTimer(true);
-            console.log("Timer started.");
           };
 
           const resetTimer = () => {
@@ -274,26 +272,20 @@
             setIsTimerActive(false);
             setTimer(REST_TIMER_DURATION);
             setShowTimer(false);
-            console.log("Timer reset.");
           };
 
-          // Function to save workout status to local storage
+          // Save workout status to local storage
           const saveWorkoutsToLocalStorage = useCallback((data) => {
             try {
               localStorage.setItem(`workouts-${selectedWeekId}`, JSON.stringify(data));
-              console.log("Workouts saved to localStorage for week:", selectedWeekId);
-              setUserMessage(''); // Clear any previous error messages
+              setUserMessage('');
             } catch (error) {
-              console.error("Error saving to localStorage:", error);
               setUserMessage("Failed to save workout data locally. Storage might be full.");
             }
           }, [selectedWeekId]);
 
-          // Function to handle toggling set completion and saving weight
+          // Handle set data change
           const handleSetDataChange = useCallback((exerciseId, setIndex, field, value) => {
-            console.log(`Attempting to update ${exerciseId} set ${setIndex}, field ${field} to ${value}.`);
-
-            // Create a deep copy to avoid direct state mutation
             const updatedWorkoutStatus = JSON.parse(JSON.stringify(workoutStatus));
             if (!updatedWorkoutStatus[exerciseId]) {
               updatedWorkoutStatus[exerciseId] = {};
@@ -301,34 +293,26 @@
             if (!updatedWorkoutStatus[exerciseId][`set-${setIndex}`]) {
               updatedWorkoutStatus[exerciseId][`set-${setIndex}`] = { completed: false, weight: '' };
             }
-
-            // Explicitly handle weight as a number or empty string
             if (field === 'weight') {
                 const numericValue = parseFloat(value);
                 updatedWorkoutStatus[exerciseId][`set-${setIndex}`][field] = isNaN(numericValue) ? '' : numericValue;
             } else {
                 updatedWorkoutStatus[exerciseId][`set-${setIndex}`][field] = value;
             }
-
-            // Update local state immediately for responsiveness
             setWorkoutStatus(updatedWorkoutStatus);
-            // Save to local storage
             saveWorkoutsToLocalStorage(updatedWorkoutStatus);
-
-            // If a set is being marked complete, start timer
             if (field === 'completed' && value === true) {
               startTimer();
             }
           }, [workoutStatus, saveWorkoutsToLocalStorage]);
 
-          // Function to handle "Confirm Set" button click
+          // Confirm set button
           const handleConfirmSet = useCallback((exerciseId, setIndex) => {
             const currentSetStatus = workoutStatus[exerciseId]?.[`set-${setIndex}`]?.completed || false;
             handleSetDataChange(exerciseId, setIndex, 'completed', !currentSetStatus);
           }, [workoutStatus, handleSetDataChange]);
 
-
-          // Function to check if all sets for an exercise are completed
+          // Check if all sets for an exercise are completed
           const areAllSetsCompleted = (exerciseId, totalSets) => {
             const exerciseSetsStatus = workoutStatus[exerciseId] || {};
             for (let i = 0; i < totalSets; i++) {
@@ -341,14 +325,12 @@
 
           // Navigation functions for weeks
           const goToPreviousWeek = () => {
-            console.log("Going to previous week.");
             const newDate = new Date(selectedDate);
             newDate.setDate(newDate.getDate() - 7);
             setSelectedDate(newDate);
           };
 
           const goToNextWeek = () => {
-            console.log("Going to next week.");
             const newDate = new Date(selectedDate);
             newDate.setDate(newDate.getDate() + 7);
             setSelectedDate(newDate);
@@ -356,38 +338,62 @@
 
           // Navigation functions for days within the selected week
           const goToPreviousDay = () => {
-            console.log("Going to previous day.");
             const newDate = new Date(selectedDate);
             newDate.setDate(newDate.getDate() - 1);
             setSelectedDate(newDate);
           };
 
           const goToNextDay = () => {
-            console.log("Going to next day.");
             const newDate = new Date(selectedDate);
             newDate.setDate(newDate.getDate() + 1);
             setSelectedDate(newDate);
           };
 
           const goToToday = () => {
-            console.log("Going to today.");
-            setSelectedDate(new Date()); // Set to current date
+            setSelectedDate(new Date());
           };
+
+          // Swap modal logic
+          const openSwapModal = () => setSwapModalOpen(true);
+          const closeSwapModal = () => {
+            setSwapDayA('');
+            setSwapDayB('');
+            setSwapModalOpen(false);
+          };
+          const handleSwapDays = () => {
+            const idxA = customSchedule.findIndex(d => d.day === swapDayA);
+            const idxB = customSchedule.findIndex(d => d.day === swapDayB);
+            if (idxA !== -1 && idxB !== -1) {
+              const newSchedule = [...customSchedule];
+              [newSchedule[idxA], newSchedule[idxB]] = [newSchedule[idxB], newSchedule[idxA]];
+              setCustomSchedule(newSchedule);
+              closeSwapModal();
+            }
+          };
+
+          // Get previous week's workout status for weight carry-over
+          const getPreviousWeekStatus = () => {
+            const prevWeekDate = new Date(selectedDate);
+            prevWeekDate.setDate(prevWeekDate.getDate() - 7);
+            const prevWeekId = getISOWeekDate(prevWeekDate);
+            try {
+              const storedData = localStorage.getItem(`workouts-${prevWeekId}`);
+              return storedData ? JSON.parse(storedData) : {};
+            } catch {
+              return {};
+            }
+          };
+          const previousWeekStatus = getPreviousWeekStatus();
 
           // Get scheduled workouts for the selected day
           const getWorkoutsForSelectedDay = () => {
-            const scheduleSection = WORKOUT_PLAN.find(s => s.isSchedule);
-            if (!scheduleSection) return [];
-
-            // Map selectedDayIndex (0=Sunday, 1=Monday) to schedule's day string
+            const scheduleSection = { schedule: customSchedule };
             const currentDaySchedule = scheduleSection.schedule.find(item => item.day === selectedDayName);
-
             if (!currentDaySchedule || !currentDaySchedule.workoutKeys) return [];
-
             const exercisesForDay = [];
             currentDaySchedule.workoutKeys.forEach(key => {
               WORKOUT_PLAN.forEach(section => {
-                if (!section.isSchedule) { // Not the schedule section
+                if (!section.isSchedule) {
                   const dayWorkout = section.days.find(d => d.dayKey === key);
                   if (dayWorkout) {
                     exercisesForDay.push({
@@ -448,7 +454,7 @@
 
                 {/* Week Navigation and Current Week Display */}
                 <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4 mb-8 shadow-2xl border border-white border-opacity-30 text-white text-center">
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-between mb-4 gap-x-4">
                     <button
                       onClick={goToPreviousWeek}
                       className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
@@ -466,34 +472,66 @@
                   <p className="text-lg">Viewing workouts for: <span className="font-extrabold text-yellow-300">{selectedDate.toDateString()}</span></p>
                 </div>
 
-                {/* Sample Weekly Schedule - Always at top of workout content */}
-                {WORKOUT_PLAN.find(s => s.isSchedule) && (
-                  <div className="bg-white bg-opacity-15 backdrop-blur-sm rounded-xl p-5 sm:p-6 mb-8 shadow-2xl border border-white border-opacity-30">
-                    <h2 className="text-2xl sm:text-3xl font-extrabold mb-4 text-yellow-200">Weekly Workout Schedule</h2>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full bg-white bg-opacity-10 rounded-lg shadow-inner">
-                        <thead>
-                          <tr className="bg-blue-700 bg-opacity-50">
-                            <th className="py-3 px-4 text-left text-sm font-extrabold text-gray-100 rounded-tl-lg">Day</th>
-                            <th className="py-3 px-4 text-left text-sm font-extrabold text-gray-100 rounded-tr-lg">Workout</th>
+                {/* Sample Weekly Schedule */}
+                <div className="bg-white bg-opacity-15 backdrop-blur-sm rounded-xl p-5 sm:p-6 mb-8 shadow-2xl border border-white border-opacity-30">
+                  <h2 className="text-2xl sm:text-3xl font-extrabold mb-4 text-yellow-200">Weekly Workout Schedule</h2>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full bg-white bg-opacity-10 rounded-lg shadow-inner">
+                      <thead>
+                        <tr className="bg-blue-700 bg-opacity-50">
+                          <th className="py-3 px-4 text-left text-sm font-extrabold text-gray-100 rounded-tl-lg">Day</th>
+                          <th className="py-3 px-4 text-left text-sm font-extrabold text-gray-100 rounded-tr-lg">Workout</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {customSchedule.map((item, idx) => (
+                          <tr key={idx} className={`${item.day === selectedDayName ? 'bg-blue-500 bg-opacity-30' : (idx % 2 === 0 ? 'bg-opacity-5' : 'bg-opacity-10')} hover:bg-opacity-20 transition-colors`}>
+                            <td className="py-3 px-4 text-base text-gray-100">{item.day}</td>
+                            <td className="py-3 px-4 text-base text-gray-100">{item.workout}</td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {WORKOUT_PLAN.find(s => s.isSchedule).schedule.map((item, idx) => (
-                            <tr key={idx} className={`${item.day === selectedDayName ? 'bg-blue-500 bg-opacity-30' : (idx % 2 === 0 ? 'bg-opacity-5' : 'bg-opacity-10')} hover:bg-opacity-20 transition-colors`}>
-                              <td className="py-3 px-4 text-base text-gray-100">{item.day}</td>
-                              <td className="py-3 px-4 text-base text-gray-100">{item.workout}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                )}
+                  <button
+                    className="mt-4 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-full shadow-lg"
+                    onClick={openSwapModal}
+                  >
+                    Swap Workout/Cardio Days
+                  </button>
+                  {swapModalOpen && (
+                    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+                      <div className="bg-white rounded-xl p-6 shadow-2xl text-gray-900 w-full max-w-xs">
+                        <h3 className="font-bold mb-2">Swap Days</h3>
+                        <select className="mb-2 w-full p-2 rounded" value={swapDayA} onChange={e => setSwapDayA(e.target.value)}>
+                          <option value="">Select Day A</option>
+                          {customSchedule.map(d => <option key={d.day} value={d.day}>{d.day}</option>)}
+                        </select>
+                        <select className="mb-4 w-full p-2 rounded" value={swapDayB} onChange={e => setSwapDayB(e.target.value)}>
+                          <option value="">Select Day B</option>
+                          {customSchedule.map(d => <option key={d.day} value={d.day}>{d.day}</option>)}
+                        </select>
+                        <button
+                          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-2"
+                          onClick={handleSwapDays}
+                          disabled={!swapDayA || !swapDayB || swapDayA === swapDayB}
+                        >
+                          Swap
+                        </button>
+                        <button
+                          className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded"
+                          onClick={closeSwapModal}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {/* Daily Workout Navigation */}
                 <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4 mb-8 shadow-2xl border border-white border-opacity-30 text-white text-center">
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-between mb-4 gap-x-4">
                     <button
                       onClick={goToPreviousDay}
                       className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
@@ -544,6 +582,11 @@
                                       className="w-20 p-1 rounded-md text-gray-900 bg-white bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-300 text-center mb-1"
                                       min="0"
                                     />
+                                    {previousWeekStatus[exercise.id] && previousWeekStatus[exercise.id][`set-${setIndex}`] && (
+                                      <span className="text-xs text-gray-300 mt-1">
+                                        Prev: {previousWeekStatus[exercise.id][`set-${setIndex}`].weight || '—'}
+                                      </span>
+                                    )}
                                     <span className="mb-1">Set {setIndex + 1} ({set.reps})</span>
                                     <button
                                         onClick={() => handleConfirmSet(exercise.id, setIndex)}
